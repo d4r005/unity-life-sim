@@ -1,0 +1,392 @@
+{
+  "events": [
+    { "id": "primer_paso", "title": "¡Primeros pasos!",
+      "text": "Estás agarrado del sofá. Al otro lado de la sala, tu mamá te llama con los brazos abiertos.",
+      "minAge": 1, "maxAge": 2, "weight": 6, "once": true,
+      "choices": [
+        { "text": "¡Caminar con valentía!", "log": "Diste tus primeros pasos.", "effects": { "happiness": 5, "health": 2 } },
+        { "text": "Gatear un rato más, sin prisa", "effects": { "smarts": 2 } }
+      ] },
+
+    { "id": "primera_palabra", "title": "Primera palabra",
+      "text": "Todos pendientes de ti en la mesa. ¿Cuál será tu primera palabra?",
+      "minAge": 1, "maxAge": 3, "weight": 6, "once": true,
+      "choices": [
+        { "text": "¡Mamá!", "log": "Tu primera palabra fue 'mamá'.", "effects": { "happiness": 4 } },
+        { "text": "¡Papá!", "log": "Tu primera palabra fue 'papá'.", "effects": { "happiness": 4 } },
+        { "text": "Un sonido raro que nadie entiende", "log": "Tu primera palabra fue indescifrable.", "effects": { "smarts": 3, "happiness": 1 } }
+      ] },
+
+    { "id": "pesadillas", "title": "Pesadillas",
+      "text": "Despiertas llorando en plena noche. Hay un ruido debajo de la cama.",
+      "minAge": 3, "maxAge": 6, "weight": 3,
+      "choices": [
+        { "text": "Correr con mamá y papá", "log": "Esa noche dormiste con tus papás.", "effects": { "happiness": 2, "affectionAll": 5 } },
+        { "text": "Ser valiente e investigar", "log": "Era solo un calcetín. Dormiste tranquilo.", "effects": { "smarts": 2, "happiness": -1 } }
+      ] },
+
+    { "id": "cumple_infantil", "title": "Tu cumpleaños",
+      "text": "¡Piñata, pastel y primos correteando por todos lados!",
+      "minAge": 4, "maxAge": 7, "weight": 5,
+      "choices": [
+        { "text": "Golpear la piñata con todo", "log": "Rompiste la piñata.", "effects": { "happiness": 6 } },
+        { "text": "Dejar que el más pequeño rompa la piñata", "log": "Cediste tu turno en la piñata.", "effects": { "happiness": 3, "affectionAll": 6 } }
+      ] },
+
+    { "id": "mascota", "title": "¿Un perrito?",
+      "text": "Un cachorro abandonado te sigue hasta la puerta de casa. Tus papás no se ven convencidos.",
+      "minAge": 5, "maxAge": 10, "weight": 4, "once": true,
+      "choices": [
+        { "text": "Rogar con todas tus fuerzas", "log": "Te quedaste con el perrito.", "effects": { "happiness": 10, "affectionAll": 3 } },
+        { "text": "Dejarlo en un refugio", "log": "Llevaste el perrito a un refugio.", "effects": { "happiness": -4, "smarts": 1 } }
+      ] },
+
+    { "id": "bullying", "title": "Se burlan de ti",
+      "text": "En el recreo, un niño de grado mayor te quita la lonche y se ríe de ti.",
+      "minAge": 6, "maxAge": 12, "weight": 5, "requiresFlag": "escuela",
+      "choices": [
+        { "text": "Contárselo a la maestra", "log": "La maestra detuvo al matón.", "effects": { "happiness": 1, "smarts": 2 } },
+        { "text": "Defenderte con las uñas y los dientes", "log": "Te defendiste en el recreo.", "effects": { "health": -3, "happiness": 2, "looks": -1 } },
+        { "text": "Ignorarlo y comerte su lonche tú", "log": "Comiste la lonche del matón. Nadie se enteró.", "effects": { "happiness": 5, "health": 2 } }
+      ] },
+
+    { "id": "concurso_ortografia", "title": "Concurso de ortografía",
+      "text": "Te eligen para representar a tu salón. La palabra es 'parangaricutirimícuaro'.",
+      "minAge": 8, "maxAge": 12, "weight": 4, "requiresFlag": "escuela",
+      "choices": [
+        { "text": "Estudiar toda la noche", "log": "Ganaste el concurso de ortografía.", "effects": { "smarts": 6, "happiness": 3 } },
+        { "text": "Confiar en tu talento natural", "log": "Quedaste de segundo lugar.", "effects": { "smarts": 2, "happiness": -1 } }
+      ] },
+
+    { "id": "granos", "title": "Cambios de secundaria",
+      "text": "Te sale un grano gigante en la nariz justo antes de la foto escolar.",
+      "minAge": 12, "maxAge": 15, "weight": 4,
+      "choices": [
+        { "text": "Arreglárselas con crema y paciencia", "log": "Sobreviviste al grano.", "effects": { "looks": 1 } },
+        { "text": "Reventarlo y que pase lo que sea", "log": "El grano dejó marca.", "effects": { "looks": -2, "happiness": -2 } }
+      ] },
+
+    { "id": "futbol_escolar", "title": "Prueba de fútbol",
+      "text": "Hay prueba para el equipo de la escuela. Todo el salón irá a verte.",
+      "minAge": 12, "maxAge": 16, "weight": 4,
+      "choices": [
+        { "text": "Darlo todo en la cancha", "log": "Entraste al equipo de fútbol.", "effects": { "health": 6, "happiness": 4, "looks": 2 } },
+        { "text": "Quedarte en las gradas", "log": "Decidiste no entrar al equipo.", "effects": { "happiness": -2 } }
+      ] },
+
+    { "id": "primer_cita", "title": "Alguien te gusta",
+      "text": "Hay alguien en tu salón que no te quita la mirada. Tus amigos te empujan a hablarle.",
+      "minAge": 14, "maxAge": 17, "weight": 6, "once": true,
+      "choices": [
+        { "text": "Invitarle un helado", "log": "Tienes tu primer noviazgo.",
+          "effects": { "happiness": 8, "looks": 1, "addPartner": true } },
+        { "text": "Esperar un mejor momento", "log": "No te animaste a hablarle.", "effects": { "happiness": -2, "smarts": 1 } }
+      ] },
+
+    { "id": "fiesta_prepa", "title": "Fiesta del viernes",
+      "text": "Te invitan a una fiesta mientras tienes examen el lunes.",
+      "minAge": 15, "maxAge": 18, "weight": 5, "requiresFlag": "prepa",
+      "choices": [
+        { "text": "Ir y bailar hasta las 3", "log": "Festejaste como si no hubiera examen.", "effects": { "happiness": 8, "smarts": -2, "health": -2 } },
+        { "text": "Quedarte a estudiar", "log": "Estudiaste todo el fin de semana.", "effects": { "smarts": 4, "happiness": -3 } }
+      ] },
+
+    { "id": "que_sigue", "title": "¿Y ahora qué?",
+      "text": "Terminaste la prepa. La vida adulta llama a tu puerta y hay que elegir.",
+      "minAge": 18, "maxAge": 20, "weight": 100, "once": true,
+      "excludesFlag": "universidad",
+      "choices": [
+        { "text": "Ir a la universidad", "log": "¡Entraste a la universidad!",
+          "effects": { "smarts": 5, "happiness": 2, "flag": "universidad", "money": -30000 } },
+        { "text": "Ponerse a trabajar", "log": "Decidiste empezar a trabajar.",
+          "effects": { "flag": "trabajo", "happiness": -2 } }
+      ] },
+
+    { "id": "examen_uni", "title": "Semana de exámenes",
+      "text": "Cinco finales en la misma semana. Tu grupo propone una sesión de estudio maratónica.",
+      "minAge": 19, "maxAge": 25, "weight": 6, "requiresFlag": "universidad", "excludesFlag": "titulado",
+      "choices": [
+        { "text": "Estudiar sin dormir", "log": "Pasaste todos tus finales.", "effects": { "smarts": 5, "health": -3, "happiness": -2 } },
+        { "text": "Estudiar lo justo y confiar", "log": "Reprobaste una materia.", "effects": { "smarts": -1, "happiness": 1 } }
+      ] },
+
+    { "id": "titulacion", "title": "Graduación universitaria",
+      "text": "¡Birrete, toga y foto con toda la familia presente.",
+      "minAge": 22, "maxAge": 27, "weight": 100, "once": true, "requiresFlag": "universidad",
+      "choices": [
+        { "text": "Graduarte con honores", "log": "¡Te titulaste con honores!",
+          "effects": { "smarts": 5, "happiness": 10, "affectionAll": 5, "flag": "titulado" } },
+        { "text": "Pase de lista", "log": "Te titulaste.", "effects": { "happiness": 6, "flag": "titulado" } }
+      ] },
+
+    { "id": "busca_empleo", "title": "Bolsa de trabajo",
+      "text": "Estás en la banca de tu primera entrevista de trabajo real. La oficina huele a café y a nervios.",
+      "minAge": 18, "maxAge": 26, "weight": 100, "requiresFlag": "trabajo", "excludesFlag": "empleo",
+      "choices": [
+        { "text": "Aplicar a un puesto de oficina (sueldo bajo pero seguro)",
+          "log": "Te contrataron como asistente de oficina.",
+          "effects": { "flag": "empleo", "job": "Asistente de oficina", "salary": 120000, "happiness": 2 } },
+        { "text": "Probar suerte como mesero mientras decides",
+          "log": "Ahora eres mesero.",
+          "effects": { "flag": "empleo", "job": "Mesero", "salary": 90000, "happiness": 3 } },
+        { "text": "Aguantar por un mejor puesto", "log": "Decidiste seguir buscando.", "effects": { "happiness": -2 } }
+      ] },
+
+    { "id": "busca_empleo_pro", "title": "Oportunidad profesional",
+      "text": "Una empresa buena busca analista. Requieren título universitario... y carisma.",
+      "minAge": 22, "maxAge": 30, "weight": 100, "requiresFlag": "titulado", "excludesFlag": "empleo",
+      "choices": [
+        { "text": "Brillar en la entrevista", "log": "Te contrataron como analista.",
+          "effects": { "flag": "empleo", "job": "Analista junior", "salary": 240000, "happiness": 5, "smarts": 2 } },
+        { "text": "Mandar tu currículum y olvidarte", "log": "Nunca te llamaron de la entrevista.",
+          "effects": { "happiness": -3 } }
+      ] },
+
+    { "id": "ascenso", "title": "Posible ascenso",
+      "text": "Tu jefe te llama la puerta. Hay un puesto de coordinador disponible y tú eres candidato.",
+      "minAge": 25, "maxAge": 55, "weight": 7, "requiresFlag": "empleo",
+      "choices": [
+        { "text": "Luchar por el puesto", "log": "¡Te ascendieron!",
+          "effects": { "salary": 80000, "happiness": 8, "job": "Coordinador" } },
+        { "text": "Preferir la calma de tu puesto actual", "log": "Rechazaste el ascenso.", "effects": { "happiness": 3 } }
+      ] },
+
+    { "id": "despido", "title": "Recortes",
+      "text": "La empresa anuncia recortes. Todos caminan en silencio por los pasillos.",
+      "minAge": 22, "maxAge": 60, "weight": 4, "requiresFlag": "empleo",
+      "choices": [
+        { "text": "Negociar tu salida", "log": "Te despidieron con una buena compensación.",
+          "effects": { "money": 150000, "happiness": -5 } },
+        { "text": "Renunciar antes de que te toquen", "log": "Renunciaste a tiempo.", "effects": { "happiness": -3 } }
+      ] },
+
+    { "id": "boda", "title": "¿Te casas?",
+      "text": "Llevas tiempo con tu pareja. Una noche, bajo las estrellas, sale la pregunta.",
+      "minAge": 22, "maxAge": 60, "weight": 100, "requiresFlag": "pareja", "excludesFlag": "casado",
+      "choices": [
+        { "text": "¡Sí, quiero casarme!", "log": "¡Te casaste!",
+          "effects": { "flag": "casado", "happiness": 15, "money": -80000, "affectionAll": 8 } },
+        { "text": "Pedicelo, tal vez más adelante", "log": "Decidiste no casarte todavía.", "effects": { "happiness": 2 } },
+        { "text": "Terminar la relación", "log": "Terminaste con tu pareja.",
+          "effects": { "happiness": -10, "affectionPartner": -100 } }
+      ] },
+
+    { "id": "primer_hijo", "title": "Un bebé en camino",
+      "text": "Tu pareja te mira con una sonrisa nerviosa y un test en la mano.",
+      "minAge": 22, "maxAge": 50, "weight": 100, "requiresFlag": "pareja", "excludesFlag": "hijos",
+      "gender": "",
+      "choices": [
+        { "text": "¡Recibirlo con todo el amor!", "log": "¡Viene un bebé en camino!",
+          "effects": { "addChild": true, "happiness": 12, "affectionPartner": 10 } },
+        { "text": "Aún no es el momento", "log": "Decidieron no tener hijos por ahora.", "effects": { "happiness": -3 } }
+      ] },
+
+    { "id": "otro_hijo", "title": "¿Hermanito?",
+      "text": "Tu pareja sugiere darle un hermanito al bebé. La casa ya es pura crayola por los muros.",
+      "minAge": 25, "maxAge": 50, "weight": 5, "requiresFlag": "hijos",
+      "choices": [
+        { "text": "¡Claro que sí!", "log": "Viene otro bebé en camino.",
+          "effects": { "addChild": true, "happiness": 8, "money": -40000 } },
+        { "text": "La familia ya está completa", "log": "Decidieron no tener más hijos.", "effects": { "happiness": 2 } }
+      ] },
+
+    { "id": "crisis_pareja", "title": "Relación con problemas",
+      "text": "Las discusiones por dinero y por los niños se vuelven cada vez más frecuentes.",
+      "minAge": 25, "maxAge": 65, "weight": 5, "requiresFlag": "casado",
+      "choices": [
+        { "text": "Ir a terapia de pareja", "log": "La terapia ayudó a su relación.",
+          "effects": { "affectionPartner": 20, "happiness": 5, "money": -30000 } },
+        { "text": "Dejar que pase", "log": "La relación sigue tensa.", "effects": { "affectionPartner": -15, "happiness": -5 } },
+        { "text": "Divorciarse", "log": "Te divorciaste.", "effects": { "affectionPartner": -100, "happiness": -12, "money": -120000 } }
+      ] },
+
+    { "id": "carro", "title": "Nuevo auto",
+      "text": "El vendedor te enseña un auto reluciente. 'Última pieza de la agencia', dice.",
+      "minAge": 20, "maxAge": 70, "weight": 4,
+      "choices": [
+        { "text": "Comprarlo a crédito", "log": "Compraste un auto nuevo.",
+          "effects": { "money": -150000, "happiness": 8, "looks": 2 } },
+        { "text": "Seguir con el transporte público", "log": "Decidiste ahorrar.", "effects": { "smarts": 2, "happiness": -1 } }
+      ] },
+
+    { "id": "gimnasio", "title": "Decisión de salud",
+      "text": "Te miras al espejo y decides que es hora de cuidarte.",
+      "minAge": 20, "maxAge": 70, "weight": 5,
+      "choices": [
+        { "text": "Inscribirte al gimnasio", "log": "Empezaste a entrenar en el gimnasio.",
+          "effects": { "money": -12000, "health": 8, "looks": 4, "happiness": 3 } },
+        { "text": "Correr en el parque, gratis", "log": "Sales a correr cada mañana.",
+          "effects": { "health": 5, "happiness": 2 } },
+        { "text": "Tal vez el próximo año", "log": "Postergaste el ejercicio.", "effects": { "health": -2 } }
+      ] },
+
+    { "id": "crisis_40", "title": "Crisis de la mediana edad",
+      "text": "Revisas tu vida mientras cumples años. ¿Es esto todo lo que querías?",
+      "minAge": 38, "maxAge": 50, "weight": 6, "once": true,
+      "choices": [
+        { "text": "Comprarte una moto nueva", "log": "Compraste una moto a los cuarenta.",
+          "effects": { "money": -90000, "happiness": 10, "health": -2 } },
+        { "text": "Cambiar de rumbo profesional", "log": "Buscaste un nuevo rumbo profesional.",
+          "effects": { "happiness": 5, "smarts": 3 } },
+        { "text": "Abrir un diario y reflexionar", "log": "Empezaste un diario personal.",
+          "effects": { "happiness": 4, "smarts": 2 } }
+      ] },
+
+    { "id": "padre_enfermo", "title": "Papá está delicado",
+      "text": "Te llaman del hospital: tu padre fue internado. Piden que estés presente.",
+      "minAge": 30, "maxAge": 60, "weight": 6,
+      "choices": [
+        { "text": "Dejar todo e ir con él", "log": "Estuviste con tu padre en el hospital.",
+          "effects": { "happiness": -4, "affectionAll": 15, "money": -30000 } },
+        { "text": "Mandar dinero y llamarlo por teléfono", "log": "Apoyaste desde lejos.",
+          "effects": { "money": -20000, "happiness": -2, "affectionAll": 3 } }
+      ] },
+
+    { "id": "nietos", "title": "¡Abuelo!",
+      "text": "Tu hijo mayor te anuncia que pronto tendrás un nieto.",
+      "minAge": 48, "maxAge": 75, "weight": 100, "requiresFlag": "hijos", "once": true,
+      "choices": [
+        { "text": "Celebrar con toda la familia", "log": "¡Serás abuelo pronto!",
+          "effects": { "happiness": 12, "affectionAll": 8 } },
+        { "text": "Recomendarle calma y ahorro", "log": "Le diste consejos de vida.",
+          "effects": { "happiness": 6, "smarts": 2 } }
+      ] },
+
+    { "id": "loteria", "title": "¿Un boleto?",
+      "text": "En la tienda, el boleto de la lotería brilla sobre el mostrador. 'Sólo uno', piensas.",
+      "minAge": 18, "maxAge": 85, "weight": 3,
+      "choices": [
+        { "text": "Comprar dos boletos", "log": "No te tocó nada esta vez.", "effects": { "money": -100, "happiness": -1 } },
+        { "text": "Comprar uno y soñar", "log": "¡Ganaste la lotería menor! $60,000 extra.",
+          "effects": { "money": 60000, "happiness": 8 } },
+        { "text": "Mejor ahorita lo tuyo", "effects": { "smarts": 1 } }
+      ] },
+
+    { "id": "robo_calle", "title": "Callejón peligroso",
+      "text": "Al salir tarde, alguien te sigue por la calle desierta. El teléfono a dos cuadras de distancia.",
+      "minAge": 18, "maxAge": 80, "weight": 3,
+      "choices": [
+        { "text": "Correr hasta tu casa", "log": "Escapaste de un asalto.", "effects": { "health": -2, "happiness": -3 } },
+        { "text": "Enfrentarlo", "log": "Te asaltaron en la calle.",
+          "effects": { "money": -30000, "health": -8, "happiness": -6 } },
+        { "text": "Pedir un Uber de inmediato", "log": "Llegaste a casa en Uber.",
+          "effects": { "money": -200, "smarts": 2 } }
+      ] },
+
+    { "id": "voluntariado", "title": "Tiempo libre para dar",
+      "text": "El comedor de tu barrio pide voluntarios para los sábados.",
+      "minAge": 40, "maxAge": 85, "weight": 4,
+      "choices": [
+        { "text": "Apuntarte cada sábado", "log": "Ayudaste en el comedor del barrio.",
+          "effects": { "happiness": 8, "affectionAll": 4 } },
+        { "text": "Donar despensa una vez", "log": "Donaste despensa.",
+          "effects": { "money": -5000, "happiness": 3 } }
+      ] },
+
+    { "id": "testamento", "title": "El testamento",
+      "text": "El notario pregunta cómo quieres repartir lo tuyo cuando ya no estés.",
+      "minAge": 60, "maxAge": 100, "weight": 100, "once": true,
+      "choices": [
+        { "text": "Todo en partes iguales", "log": "Dejaste todo en partes iguales.",
+          "effects": { "happiness": 6, "affectionAll": 10 } },
+        { "text": "A quien más te quiera", "log": "Aún no decides el testamento.", "effects": { "happiness": 2 } },
+        { "text": "Donarlo a la caridad", "log": "Dejarás parte a la caridad.",
+          "effects": { "happiness": 5 } }
+      ] },
+
+    { "id": "viaje_sueno", "title": "El viaje pendiente",
+      "text": "Siempre quisiste conocer el mar. Las promociones de vuelo aparecen en tu celular.",
+      "minAge": 25, "maxAge": 85, "weight": 4,
+      "choices": [
+        { "text": "¡Viajar este año!", "log": "Por fin conociste el mar.",
+          "effects": { "money": -45000, "happiness": 12, "health": 3 } },
+        { "text": "Viaje caro y de lujo", "log": "Te diste un viaje de lujo.",
+          "effects": { "money": -150000, "happiness": 16 } },
+        { "text": "Aplazarlo un año más", "log": "Aplazaste el viaje.", "effects": { "happiness": -3 } }
+      ] },
+
+    { "id": "paseo_moto", "title": "Los viejos tiempos",
+      "text": "Encuentras tu vieja bicicleta en el almacén. Los recuerdos llegan corriendo.",
+      "minAge": 45, "maxAge": 90, "weight": 3,
+      "choices": [
+        { "text": "Dar una vuelta al barrio", "log": "Diste un paseo en bicicleta.",
+          "effects": { "health": 3, "happiness": 6 } },
+        { "text": "Regalarla a un sobrino", "log": "Regalaste tu bicicleta.", "effects": { "happiness": 5, "affectionAll": 6 } }
+      ] },
+
+    { "id": "reto_hijo", "title": "Tu hijo adolescente",
+      "text": "Tu hijo llegó tarde, con olor a cigarro y una historia poco creíble.",
+      "minAge": 35, "maxAge": 60, "weight": 5, "requiresFlag": "hijos",
+      "choices": [
+        { "text": "Conversación larga y firme", "log": "Hablaste seriamente con tu hijo.",
+          "effects": { "affectionAll": -5, "happiness": 1, "smarts": 2 } },
+        { "text": "Castigo sin salida un mes", "log": "Castigaste a tu hijo un mes.",
+          "effects": { "affectionAll": -10, "happiness": -2 } },
+        { "text": "Invitarle un helado y hablar de tú a tú", "log": "Conseguiste que te contara todo.",
+          "effects": { "affectionAll": 12, "happiness": 4 } }
+      ] },
+
+    { "id": "vecino_ruido", "title": "El vecino ruidoso",
+      "text": "Son las 2 a.m. y el vecino sigue con su karaoke. La pared vibra.",
+      "minAge": 25, "maxAge": 85, "weight": 3,
+      "choices": [
+        { "text": "Tocar su puerta amablemente", "log": "El vecino bajó el volumen.",
+          "effects": { "happiness": 3 } },
+        { "text": "Llamar a la policía", "log": "La policía visitó al vecino.",
+          "effects": { "happiness": 2, "health": 2 } },
+        { "text": "Resistir con tapones para oídos", "log": "No dormiste bien.",
+          "effects": { "health": -2, "happiness": -2 } }
+      ] },
+
+    { "id": "jubilacion_hobby", "title": "Tiempo de retiro",
+      "text": "Con los años libres por delante, buscas un nuevo pasatiempo.",
+      "minAge": 62, "maxAge": 95, "weight": 5,
+      "choices": [
+        { "text": "Clases de pintura", "log": "Tomaste clases de pintura.",
+          "effects": { "happiness": 7, "smarts": 3 } },
+        { "text": "Jardinería en el patio", "log": "Cultivas tus propias hierbas.",
+          "effects": { "happiness": 6, "health": 4 } },
+        { "text": "Dominó con los amigos", "log": "Juegas dominó cada tarde.",
+          "effects": { "happiness": 6, "smarts": 1 } }
+      ] },
+
+    { "id": "salud_checkup", "title": "Chequeo anual",
+      "text": "El doctor te mira por encima del lente: 'Hay que cuidar la dieta, ¿eh?'",
+      "minAge": 30, "maxAge": 90, "weight": 4,
+      "choices": [
+        { "text": "Seguir la dieta al pie de la letra", "log": "Mejoraste tu dieta.",
+          "effects": { "health": 8, "happiness": -2, "money": -8000 } },
+        { "text": "Vida sana... desde lunes", "log": "La dieta empieza 'el lunes'.",
+          "effects": { "health": -3, "happiness": 3 } }
+      ] },
+
+    { "id": "emprender", "title": "Idea de negocio",
+      "text": "Un conocido te propone invertir en su negocio de tacos gourmet. 'No puede fallar', asegura.",
+      "minAge": 25, "maxAge": 65, "weight": 4, "once": true,
+      "choices": [
+        { "text": "Invertir fuerte", "log": "El negocio de tacos resultó un éxito.",
+          "effects": { "money": 250000, "happiness": 6 } },
+        { "text": "Invertir poco, por si acaso", "log": "Recuperaste lo invertido.",
+          "effects": { "money": 20000, "smarts": 2 } },
+        { "text": "Mejor no arriesgar", "log": "Decidiste no invertir.", "effects": { "happiness": 1 } }
+      ] },
+
+    { "id": "deporte_riesgo", "title": "Aventura extrema",
+      "text": "Tus amigos te invitan a practicar paracaidismo. 'Es seguro', dicen, 'casi siempre'.",
+      "minAge": 18, "maxAge": 55, "weight": 3,
+      "choices": [
+        { "text": "¡Lanzarte de una vez!", "log": "Saltaste en paracaídas.",
+          "effects": { "happiness": 10, "health": -3, "looks": 1, "deathChance": 0.05 } },
+        { "text": "Quedarte en tierra con el miedo", "log": "Decidiste no saltar.", "effects": { "happiness": -1 } }
+      ] },
+
+    { "id": "estafa_online", "title": "Dulce oferta en línea",
+      "text": "Un príncipe lejano te escribe: solo necesitas enviar un pequeño 'depósito' para recibir su fortuna.",
+      "minAge": 18, "maxAge": 90, "weight": 3,
+      "choices": [
+        { "text": "Enviar el depósito", "log": "Te estafaron por correo. Nunca existió el príncipe.",
+          "effects": { "money": -40000, "smarts": -3, "happiness": -6 } },
+        { "text": "Ignorarlo y reportarlo", "log": "Evitaste una estafa.", "effects": { "smarts": 3 } }
+      ] }
+  ]
+}
