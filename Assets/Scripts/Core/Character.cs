@@ -22,6 +22,7 @@ public class Character
     public bool alive = true;
     public int generation = 1;
     public long legacyScore = 0;
+    public int portraitSeed = 0;   // semilla del retrato procedural
 
     public bool HasFlag(string f) { return flags != null && flags.Contains(f); }
 

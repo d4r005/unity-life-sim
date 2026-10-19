@@ -29,7 +29,14 @@ public class GameManager : MonoBehaviour
     private bool menuFromEvents = false;
 
     private Canvas canvas;
-    private Text hudName, hudStats, logText;
+    private Text hudName, hudMoney, logText;
+    private readonly Text[] statTexts = new Text[4];
+    private readonly Image[] statBars = new Image[4];
+    private Image avatarImage;
+    private Button advanceButton;
+    private Image advanceImage;
+    private int lastPortraitSeed = -1;
+    private static readonly string[] StatNames = { "Salud", "Felicidad", "Intel", "Aspecto" };
     private GameObject cardPanel, createPanel, deathPanel, menuPanel;
     private Transform choicesHolder, deathHolder, menuHolder;
     private Text cardTitle, cardText, menuTitle;
@@ -70,51 +77,89 @@ public class GameManager : MonoBehaviour
         Transform root = canvas.transform;
         UIBuilder.Panel(root, "Fondo", Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero, Bg);
 
-        // Barra superior
+        // ---- Encabezado: avatar, nombre, dinero y chips de stats
         UIBuilder.Panel(root, "Header", new Vector2(0f, 1f), new Vector2(1f, 1f),
-            new Vector2(0f, -110f), new Vector2(0f, 0f), Card);
-        hudName = UIBuilder.MakeText(root, "HudName", "", 30, Color.white, TextAnchor.MiddleLeft,
-            new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(20f, -104f), new Vector2(-170f, -66f));
-        hudStats = UIBuilder.MakeText(root, "HudStats", "", 22, new Color(0.85f, 0.85f, 0.9f), TextAnchor.MiddleLeft,
-            new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(20f, -64f), new Vector2(-20f, -24f));
-        UIBuilder.MakeButton(root, "BtnNewLife", "Nueva vida", 20, Danger,
-            new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(-150f, -102f), new Vector2(-16f, -54f),
+            new Vector2(0f, -150f), new Vector2(0f, 0f), Card);
+        GameObject avatarGo = new GameObject("Avatar", typeof(Image));
+        avatarGo.transform.SetParent(root, false);
+        RectTransform art = avatarGo.GetComponent<RectTransform>();
+        art.anchorMin = new Vector2(0f, 1f); art.anchorMax = new Vector2(0f, 1f);
+        art.offsetMin = new Vector2(20f, -122f); art.offsetMax = new Vector2(110f, -32f);
+        avatarImage = avatarGo.GetComponent<Image>();
+
+        hudName = UIBuilder.MakeText(root, "HudName", "", 26, Color.white, TextAnchor.MiddleLeft,
+            new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(116f, -70f), new Vector2(-190f, -34f),
+            FontStyle.Bold);
+        hudMoney = UIBuilder.MakeText(root, "HudMoney", "", 26, new Color(1f, 0.9f, 0.55f), TextAnchor.MiddleRight,
+            new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(-190f, -70f), new Vector2(-20f, -34f),
+            FontStyle.Bold);
+        UIBuilder.MakeButton(root, "BtnNewLife", "Nueva vida", 18, Danger,
+            new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(-150f, -140f), new Vector2(-16f, -104f),
             () => { SaveSystem.Delete(); ShowCreate(); });
 
-        // Tarjeta central (eventos y resúmenes)
+        Color[] statColors = {
+            new Color(0.30f, 0.72f, 0.38f), new Color(0.92f, 0.74f, 0.25f),
+            new Color(0.35f, 0.75f, 0.92f), new Color(0.92f, 0.45f, 0.62f)
+        };
+        for (int i = 0; i < 4; i++)
+        {
+            float x0 = 20f + i * 166f;
+            UIBuilder.Panel(root, "Chip" + i, new Vector2(0f, 1f), new Vector2(0f, 1f),
+                new Vector2(x0, -140f), new Vector2(x0 + 158f, -84f), new Color(0.13f, 0.14f, 0.18f, 1f));
+            UIBuilder.Plain(root, "Dot" + i, new Vector2(0f, 1f), new Vector2(0f, 1f),
+                new Vector2(x0 + 12f, -106f), new Vector2(x0 + 24f, -94f), statColors[i]);
+            statTexts[i] = UIBuilder.MakeText(root, "StatTxt" + i, "", 17, Color.white, TextAnchor.MiddleLeft,
+                new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(x0 + 30f, -108f), new Vector2(x0 + 150f, -92f));
+            UIBuilder.Plain(root, "BarBg" + i, new Vector2(0f, 1f), new Vector2(0f, 1f),
+                new Vector2(x0 + 12f, -130f), new Vector2(x0 + 146f, -118f), new Color(0.08f, 0.08f, 0.10f, 1f));
+            Image fill = UIBuilder.Plain(root, "BarFill" + i, new Vector2(0f, 1f), new Vector2(0f, 1f),
+                new Vector2(x0 + 12f, -130f), new Vector2(x0 + 146f, -118f), statColors[i]);
+            fill.type = Image.Type.Filled;
+            fill.fillMethod = Image.FillMethod.Horizontal;
+            fill.fillOrigin = (int)Image.OriginHorizontal.Left;
+            statBars[i] = fill;
+        }
+
+        // ---- Tarjeta central (eventos y resúmenes)
         cardPanel = UIBuilder.Panel(root, "Card", new Vector2(0f, 1f), new Vector2(1f, 1f),
-            new Vector2(16f, -860f), new Vector2(-16f, -130f), Card).gameObject;
-        cardTitle = UIBuilder.MakeText(cardPanel.transform, "Title", "", 36, Color.white, TextAnchor.UpperCenter,
-            Vector2.zero, Vector2.one, new Vector2(20f, -110f), new Vector2(-20f, -20f));
-        cardText = UIBuilder.MakeText(cardPanel.transform, "Body", "", 29, new Color(0.88f, 0.88f, 0.92f), TextAnchor.UpperLeft,
-            Vector2.zero, Vector2.one, new Vector2(24f, -400f), new Vector2(-24f, -150f));
+            new Vector2(16f, -820f), new Vector2(-16f, -166f), Card).gameObject;
+        cardTitle = UIBuilder.MakeText(cardPanel.transform, "Title", "", 32, Color.white, TextAnchor.UpperCenter,
+            Vector2.zero, Vector2.one, new Vector2(24f, -232f), new Vector2(-24f, -180f), FontStyle.Bold);
+        cardText = UIBuilder.MakeText(cardPanel.transform, "Body", "", 27, new Color(0.88f, 0.88f, 0.92f), TextAnchor.UpperLeft,
+            Vector2.zero, Vector2.one, new Vector2(28f, -460f), new Vector2(-28f, -250f));
         choicesHolder = UIBuilder.Panel(cardPanel.transform, "Choices", new Vector2(0f, 0f), new Vector2(1f, 0f),
-            new Vector2(16f, 16f), new Vector2(-16f, 320f), new Color(0f, 0f, 0f, 0f)).transform;
+            new Vector2(16f, 18f), new Vector2(-16f, 340f), new Color(0f, 0f, 0f, 0f)).transform;
 
-        // Panel de menús (ocupación, actividades, familia, bienes, delitos)
+        // ---- Panel de menús
         menuPanel = UIBuilder.Panel(root, "Menu", new Vector2(0f, 1f), new Vector2(1f, 1f),
-            new Vector2(16f, -860f), new Vector2(-16f, -130f), Card).gameObject;
-        menuTitle = UIBuilder.MakeText(menuPanel.transform, "MenuTitle", "", 34, Color.white, TextAnchor.UpperCenter,
-            Vector2.zero, Vector2.one, new Vector2(20f, -80f), new Vector2(-20f, -20f));
+            new Vector2(16f, -820f), new Vector2(-16f, -166f), Card).gameObject;
+        menuTitle = UIBuilder.MakeText(menuPanel.transform, "MenuTitle", "", 32, Color.white, TextAnchor.UpperCenter,
+            Vector2.zero, Vector2.one, new Vector2(24f, -232f), new Vector2(-24f, -180f), FontStyle.Bold);
         menuHolder = UIBuilder.Panel(menuPanel.transform, "MenuHolder", new Vector2(0f, 0f), new Vector2(1f, 1f),
-            new Vector2(12f, 16f), new Vector2(-12f, -88f), new Color(0f, 0f, 0f, 0f)).transform;
+            new Vector2(12f, 18f), new Vector2(-12f, -96f), new Color(0f, 0f, 0f, 0f)).transform;
 
-        // Panel de muerte / legado
+        // ---- Panel de muerte / legado
         deathPanel = UIBuilder.Panel(root, "Death", new Vector2(0f, 1f), new Vector2(1f, 1f),
-            new Vector2(16f, -800f), new Vector2(-16f, -160f), new Color(0.25f, 0.08f, 0.08f, 1f)).gameObject;
+            new Vector2(16f, -820f), new Vector2(-16f, -166f), new Color(0.25f, 0.08f, 0.08f, 1f)).gameObject;
         UIBuilder.MakeText(deathPanel.transform, "DeathTitle", "FIN DE LA VIDA", 40, Color.white, TextAnchor.UpperCenter,
-            Vector2.zero, Vector2.one, new Vector2(20f, -60f), new Vector2(-20f, -10f));
-        deathHolder = UIBuilder.Panel(deathPanel.transform, "DeathHolder", new Vector2(0f, 0f), new Vector2(1f, 0f),
-            new Vector2(16f, 16f), new Vector2(-16f, 520f), new Color(0f, 0f, 0f, 0f)).transform;
+            Vector2.zero, Vector2.one, new Vector2(20f, -236f), new Vector2(-20f, -184f), FontStyle.Bold);
+        deathHolder = UIBuilder.Panel(deathPanel.transform, "DeathHolder", new Vector2(0f, 0f), new Vector2(1f, 1f),
+            new Vector2(16f, 18f), new Vector2(-16f, -190f), new Color(0f, 0f, 0f, 0f)).transform;
 
-        // Registro
-        UIBuilder.Panel(root, "LogPanel", new Vector2(0f, 0f), new Vector2(1f, 0f),
-            new Vector2(16f, 110f), new Vector2(-16f, 300f), Card);
-        logText = UIBuilder.MakeText(root, "Log", "", 22, new Color(0.7f, 0.75f, 0.8f), TextAnchor.UpperLeft,
-            new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(32f, 120f), new Vector2(-32f, 292f));
+        // ---- Registro
+        UIBuilder.Panel(root, "LogPanel", new Vector2(0f, 1f), new Vector2(1f, 1f),
+            new Vector2(16f, -1052f), new Vector2(-16f, -836f), Card);
+        logText = UIBuilder.MakeText(root, "Log", "", 20, new Color(0.68f, 0.72f, 0.78f), TextAnchor.UpperLeft,
+            new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(30f, -1044f), new Vector2(-30f, -848f));
 
-        // Barra inferior de menús
-        string[] menuNames = { "Familia", "Ocupación", "Actividades", "Bienes", "Delitos" };
+        // ---- Botón grande de avanzar año
+        advanceButton = UIBuilder.MakeButton(root, "BtnAdvance", "Avanzar un año  +", 32, Accent,
+            new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(16f, -1160f), new Vector2(-16f, -1068f),
+            AdvanceYear);
+        advanceImage = advanceButton.GetComponent<Image>();
+
+        // ---- Barra de menús inferior
+        string[] menuNames = { "Familia", "Ocupación", "Actividad", "Bienes", "Delitos" };
         Action[] menuActions = {
             () => OpenFamilyMenu(),
             () => OpenOccupationMenu(),
@@ -125,17 +170,17 @@ public class GameManager : MonoBehaviour
         for (int i = 0; i < menuNames.Length; i++)
         {
             int idx = i;
-            UIBuilder.MakeButton(root, "Menu_" + menuNames[i], menuNames[i], 24, Btn,
+            UIBuilder.MakeButton(root, "Menu_" + menuNames[i], menuNames[i], 22, Btn,
                 new Vector2(0f, 0f), new Vector2(0f, 0f),
                 new Vector2(16f + idx * 139f, 16f), new Vector2(148f + idx * 139f, 100f),
                 () => menuActions[idx]());
         }
 
-        // Panel de creación de personaje
+        // ---- Panel de creación de personaje
         createPanel = UIBuilder.Panel(root, "Create", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
             new Vector2(-300f, -360f), new Vector2(300f, 360f), Card).gameObject;
         UIBuilder.MakeText(createPanel.transform, "Title", "GENERACIONES", 46, Color.white, TextAnchor.MiddleCenter,
-            Vector2.zero, Vector2.one, new Vector2(20f, -80f), new Vector2(-20f, -10f));
+            Vector2.zero, Vector2.one, new Vector2(20f, -80f), new Vector2(-20f, -10f), FontStyle.Bold);
         UIBuilder.MakeText(createPanel.transform, "Sub", "Tu vida. Tus decisiones. Tu dinastía.", 24,
             new Color(0.7f, 0.75f, 0.8f), TextAnchor.MiddleCenter,
             Vector2.zero, Vector2.one, new Vector2(20f, -130f), new Vector2(-20f, -90f));
@@ -150,6 +195,17 @@ public class GameManager : MonoBehaviour
         UIBuilder.MakeButton(createPanel.transform, "Start", "Nacer", 34, Accent,
             new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(30f, -410f), new Vector2(-30f, -330f),
             StartLifeFromCreate);
+    }
+
+    private void SetAdvanceVisible(bool visible)
+    {
+        advanceButton.gameObject.SetActive(visible);
+    }
+
+    private void SetAdvanceEnabled(bool enabled)
+    {
+        advanceButton.interactable = enabled;
+        advanceImage.color = enabled ? Accent : BtnOff;
     }
 
     // ----------------------------------------------------------------- creación
@@ -169,6 +225,7 @@ public class GameManager : MonoBehaviour
         ch.smarts = rng.Next(35, 70);
         ch.looks = rng.Next(25, 75);
         ch.generation = 1;
+        ch.portraitSeed = rng.Next(1, 1000000);
 
         data = new SaveData();
         data.character = ch;
@@ -200,12 +257,14 @@ public class GameManager : MonoBehaviour
         deathPanel.SetActive(false);
         menuPanel.SetActive(false);
         cardPanel.SetActive(true);
+        SetAdvanceVisible(true);
+        SetAdvanceEnabled(false);
         LifeEvent e = yearEvents[eventIndex];
         cardTitle.text = e.title;
         cardText.text = e.text;
         UIBuilder.Clear(choicesHolder);
         int n = e.choices.Length;
-        float h = 84f; float gap = 12f;
+        float h = 92f; float gap = 10f;
         for (int i = 0; i < n; i++)
         {
             Choice c = e.choices[i];
@@ -288,8 +347,12 @@ public class GameManager : MonoBehaviour
             "Bienes: " + assetsLine + "\n\n" +
             "Legado de la dinastía: " + data.dynastyLegacy;
         UIBuilder.Clear(choicesHolder);
-        UIBuilder.MakeButton(choicesHolder, "NextYear", "Avanzar un año", 30, Accent,
-            new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, -96f), new Vector2(0f, 0f), AdvanceYear);
+        UIBuilder.MakeText(choicesHolder, "Hint",
+            "Usa los menús de abajo para actuar.\nCuando estés listo, pulsa el botón azul.",
+            24, new Color(0.6f, 0.65f, 0.72f), TextAnchor.MiddleCenter,
+            new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, -100f), new Vector2(0f, 0f));
+        SetAdvanceVisible(true);
+        SetAdvanceEnabled(true);
         UpdateHud();
         SaveSystem.Save(data);
     }
@@ -345,16 +408,17 @@ public class GameManager : MonoBehaviour
         cardPanel.SetActive(false);
         menuPanel.SetActive(false);
         deathPanel.SetActive(true);
+        SetAdvanceVisible(false);
         UIBuilder.Clear(deathHolder);
 
         UIBuilder.MakeText(deathHolder, "Reason", reason, 28, new Color(1f, 0.85f, 0.85f), TextAnchor.UpperCenter,
-            Vector2.zero, Vector2.one, new Vector2(10f, -120f), new Vector2(-10f, -10f));
+            Vector2.zero, Vector2.one, new Vector2(10f, -70f), new Vector2(-10f, -10f));
         UIBuilder.MakeText(deathHolder, "Legacy",
             "Legado ganado: " + legacyGained + "\nLegado total de la dinastía: " + data.dynastyLegacy,
             26, Color.white, TextAnchor.UpperCenter,
-            Vector2.zero, Vector2.one, new Vector2(10f, -170f), new Vector2(-10f, -120f));
+            Vector2.zero, Vector2.one, new Vector2(10f, -130f), new Vector2(-10f, -74f));
 
-        int y = -260;
+        int y = -160;
         List<Person> heirs = data.family.AliveChildren.FindAll(c => c.age >= 18);
         bool any = false;
         foreach (Person heir in heirs)
@@ -394,6 +458,7 @@ public class GameManager : MonoBehaviour
         ch.looks = rng.Next(30, 80);
         ch.money = old.money / 2;
         ch.generation = old.generation + 1;
+        ch.portraitSeed = rng.Next(1, 1000000);
 
         FamilyTree f = new FamilyTree();
         f.members.Add(new Person(old.name, old.gender == "F" ? "madre" : "padre", old.gender, old.age, 90) { alive = false });
@@ -803,6 +868,7 @@ public class GameManager : MonoBehaviour
         deathPanel.SetActive(false);
         menuPanel.SetActive(false);
         createPanel.SetActive(true);
+        SetAdvanceVisible(false);
         if (nameInput != null) nameInput.text = "";
         UpdateHud();
     }
@@ -812,14 +878,23 @@ public class GameManager : MonoBehaviour
         if (data == null || data.character == null || !data.character.alive)
         {
             hudName.text = "GENERACIONES";
-            hudStats.text = "Simulador de vida familiar";
+            hudMoney.text = "Tu vida. Tu dinastía.";
             return;
         }
         Character ch = data.character;
         hudName.text = ch.name + "  ·  " + ch.age + " años  ·  Gen " + ch.generation;
-        hudStats.text = "Salud " + ch.health + "   Felicidad " + ch.happiness +
-                        "   Inteligencia " + ch.smarts + "   Aspecto " + ch.looks +
-                        "   $" + ch.money;
+        hudMoney.text = "$" + ch.money.ToString("N0");
+        int[] vals = { ch.health, ch.happiness, ch.smarts, ch.looks };
+        for (int i = 0; i < 4; i++)
+        {
+            statTexts[i].text = StatNames[i] + " " + vals[i];
+            statBars[i].fillAmount = vals[i] / 100f;
+        }
+        if (ch.portraitSeed != lastPortraitSeed)
+        {
+            lastPortraitSeed = ch.portraitSeed;
+            avatarImage.sprite = UIBuilder.Avatar(ch.portraitSeed);
+        }
     }
 
     private void LogLine(string line)
