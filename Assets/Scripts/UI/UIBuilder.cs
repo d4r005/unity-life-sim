@@ -39,8 +39,9 @@ public static class UIBuilder
         go.transform.SetParent(parent, false);
         RectTransform rt = go.GetComponent<RectTransform>();
         rt.anchorMin = aMin; rt.anchorMax = aMax; rt.offsetMin = oMin; rt.offsetMax = oMax;
-        go.GetComponent<Image>().color = color;
-        return go;
+        Image img = go.GetComponent<Image>();
+        img.color = color;
+        return img;
     }
 
     public static Text MakeText(Transform parent, string name, string content, int size, Color color,
