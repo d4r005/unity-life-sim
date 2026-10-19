@@ -41,7 +41,6 @@ public class GameManager : MonoBehaviour
     private bool autoPlay = false;
     private float autoTimer = 0f;
     private static readonly float AUTO_INTERVAL = 4f;
-    private int lastPortraitSeed = -1;
     private static readonly string[] StatNames = { "Salud", "Felicidad", "Intel", "Aspecto" };
     private GameObject cardPanel, createPanel, deathPanel, menuPanel;
     private Transform choicesHolder, deathHolder, menuHolder;
@@ -1220,11 +1219,7 @@ public class GameManager : MonoBehaviour
             statTexts[i].text = StatNames[i] + " " + vals[i];
             statBars[i].fillAmount = vals[i] / 100f;
         }
-        if (ch.portraitSeed != lastPortraitSeed)
-        {
-            lastPortraitSeed = ch.portraitSeed;
-            avatarImage.sprite = UIBuilder.Avatar(ch.portraitSeed);
-        }
+        avatarImage.sprite = UIBuilder.Avatar(ch.portraitSeed);
     }
 
     private void LogLine(string line)

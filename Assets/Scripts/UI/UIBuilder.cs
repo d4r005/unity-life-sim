@@ -180,7 +180,7 @@ public static class UIBuilder
         CanvasScaler s = go.GetComponent<CanvasScaler>();
         s.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
         s.referenceResolution = new Vector2(720, 1280);
-        s.matchWidthOrHeight = 0.5f;
+        s.matchWidthOrHeight = 0f;
         if (EventSystem.current == null)
             new GameObject("EventSystem", typeof(EventSystem), typeof(StandaloneInputModule));
         return c;
