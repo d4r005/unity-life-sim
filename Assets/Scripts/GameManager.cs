@@ -35,6 +35,11 @@ public class GameManager : MonoBehaviour
     private Image avatarImage;
     private Button advanceButton;
     private Image advanceImage;
+    private Button autoButton;
+    private Image autoImage;
+    private bool autoPlay = false;
+    private float autoTimer = 0f;
+    private static readonly float AUTO_INTERVAL = 4f;
     private int lastPortraitSeed = -1;
     private static readonly string[] StatNames = { "Salud", "Felicidad", "Intel", "Aspecto" };
     private GameObject cardPanel, createPanel, deathPanel, menuPanel;
@@ -152,11 +157,15 @@ public class GameManager : MonoBehaviour
         logText = UIBuilder.MakeText(root, "Log", "", 20, new Color(0.68f, 0.72f, 0.78f), TextAnchor.UpperLeft,
             new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(30f, -1044f), new Vector2(-30f, -848f));
 
-        // ---- Botón grande de avanzar año
+        // ---- Botón grande de avanzar año + botón AUTO (avanza solo)
         advanceButton = UIBuilder.MakeButton(root, "BtnAdvance", "Avanzar un año  +", 32, Accent,
-            new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(16f, -1160f), new Vector2(-16f, -1068f),
+            new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(100f, -1160f), new Vector2(-16f, -1068f),
             AdvanceYear);
         advanceImage = advanceButton.GetComponent<Image>();
+        autoButton = UIBuilder.MakeButton(root, "BtnAuto", "AUTO", 24, BtnOff,
+            new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(16f, -1160f), new Vector2(88f, -1068f),
+            ToggleAuto);
+        autoImage = autoButton.GetComponent<Image>();
 
         // ---- Barra de menús inferior
         string[] menuNames = { "Familia", "Ocupación", "Actividad", "Bienes", "Delitos" };
@@ -357,9 +366,32 @@ public class GameManager : MonoBehaviour
         SaveSystem.Save(data);
     }
 
+    private void Update()
+    {
+        // AUTO: avanza los años solo cuando estamos en el resumen anual
+        if (autoPlay && state == State.Summary && data != null && data.character.alive)
+        {
+            autoTimer -= Time.deltaTime;
+            if (autoTimer <= 0f)
+            {
+                autoTimer = AUTO_INTERVAL;
+                AdvanceYear();
+            }
+        }
+    }
+
+    private void ToggleAuto()
+    {
+        autoPlay = !autoPlay;
+        autoTimer = AUTO_INTERVAL;
+        autoImage.color = autoPlay ? new Color(0.30f, 0.62f, 0.36f) : BtnOff;
+        LogLine(autoPlay ? "Auto-avance activado: un año cada 4 segundos." : "Auto-avance pausado.");
+    }
+
     private void AdvanceYear()
     {
         Character ch = data.character;
+        autoTimer = AUTO_INTERVAL;
         ch.age++;
         data.currentYear++;
 
