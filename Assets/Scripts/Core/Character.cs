@@ -9,6 +9,7 @@ public class Character
 {
     public string name = "";
     public string gender = "M";          // "M" o "F"
+    public string orientation = "H";    // "H" hetero, "G" gay, "B" bisexual
     public string country = "Mexico";
     public int age = 0;
     public int health = 100;

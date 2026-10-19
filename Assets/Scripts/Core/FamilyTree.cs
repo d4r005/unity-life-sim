@@ -98,9 +98,12 @@ public class FamilyTree
         }
     }
 
-    public Person AddPartner(string surname, int playerAge)
+    public Person AddPartner(string surname, int playerAge, string playerGender, string orientation)
     {
-        bool male = rngStatic.NextDouble() < 0.5;
+        bool male;
+        if (orientation == "B") male = rngStatic.NextDouble() < 0.5;      // bisexual: cualquiera
+        else if (orientation == "G") male = playerGender == "M";          // gay: mismo genero
+        else male = playerGender != "M";                                  // hetero: genero opuesto
         string n = (male ? NameGenerator.RandomMale(rngStatic) : NameGenerator.RandomFemale(rngStatic)) + " " + surname;
         Person p = new Person(n, "pareja", male ? "M" : "F", Math.Max(18, playerAge + rngStatic.Next(-4, 5)), 75);
         p.portraitSeed = rngStatic.Next();

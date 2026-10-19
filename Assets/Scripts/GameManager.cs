@@ -48,6 +48,8 @@ public class GameManager : MonoBehaviour
     private Text cardTitle, cardText, menuTitle;
     private InputField nameInput;
     private string chosenGender = "M";
+    private string chosenOrientation = "H";
+    private readonly UnityEngine.UI.Image[] orientationImgs = new UnityEngine.UI.Image[3];
 
     // ---- Paleta estilo Family Go: fondo claro, tinta oscura, contornos gruesos
     private static Color Bg => Theme.Bg;
@@ -219,9 +221,31 @@ public class GameManager : MonoBehaviour
         UIBuilder.MakeButton(createPanel.transform, "Female", "Niña", 30, Cream,
             new Vector2(0.5f, 1f), new Vector2(1f, 1f), new Vector2(8f, -324f), new Vector2(-30f, -254f),
             () => { chosenGender = "F"; });
+        string[] orientLabels = { "Hetero", "Gay", "Bisexual" };
+        string[] orientValues = { "H", "G", "B" };
+        for (int i = 0; i < 3; i++)
+        {
+            int idx = i;
+            UnityEngine.UI.Button ob = UIBuilder.MakeButton(createPanel.transform, "Orient_" + i,
+                orientLabels[i], 22, i == 0 ? Accent : Cream,
+                new Vector2(0f, 1f), new Vector2(0f, 1f),
+                new Vector2(30f + idx * 190f, -394f), new Vector2(200f + idx * 190f, -334f),
+                () => { chosenOrientation = orientValues[idx]; RefreshOrientationButtons(); });
+            orientationImgs[idx] = ob.GetComponent<UnityEngine.UI.Image>();
+        }
         UIBuilder.MakeButton(createPanel.transform, "Start", "Nacer", 34, Accent,
-            new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(30f, -414f), new Vector2(-30f, -334f),
+            new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(30f, -474f), new Vector2(-30f, -404f),
             StartLifeFromCreate);
+    }
+
+    private void RefreshOrientationButtons()
+    {
+        string[] orientValues = { "H", "G", "B" };
+        for (int i = 0; i < 3; i++)
+        {
+            if (orientationImgs[i] != null)
+                orientationImgs[i].sprite = UIBuilder.OutlineSprite(orientValues[i] == chosenOrientation ? Accent : Cream);
+        }
     }
 
     private void SetAdvanceVisible(bool visible)
@@ -253,6 +277,7 @@ public class GameManager : MonoBehaviour
         ch.smarts = rng.Next(35, 70);
         ch.looks = rng.Next(25, 75);
         ch.generation = 1;
+        ch.orientation = chosenOrientation;
         ch.portraitSeed = rng.Next(1, 1000000);
 
         data = new SaveData();
@@ -325,7 +350,7 @@ public class GameManager : MonoBehaviour
         }
         if (fx.addPartner && data.family.Partner == null)
         {
-            Person p = data.family.AddPartner(NameGenerator.RandomSurname(rng), ch.age);
+            Person p = data.family.AddPartner(NameGenerator.RandomSurname(rng), ch.age, ch.gender, ch.orientation);
             ch.SetFlag("pareja");
             LogLine("¡Ahora sales con " + p.name + "!");
         }
@@ -343,7 +368,8 @@ public class GameManager : MonoBehaviour
         {
             Person child = data.family.AddChild(ch.name.Contains(" ") ? ch.name.Split(' ')[1] : NameGenerator.RandomSurname(rng));
             ch.SetFlag("hijos");
-            LogLine("¡Nace " + child.name + "!");
+            bool adopted = data.family.Partner.gender == ch.gender;   // parejas del mismo género adoptan
+            LogLine(adopted ? "¡Adoptaste a " + child.name + "!" : "¡Nace " + child.name + "!");
         }
         if (fx.deathChance > 0f && rng.NextDouble() < fx.deathChance)
         {
@@ -771,7 +797,7 @@ public class GameManager : MonoBehaviour
         double chance = 0.15 + ch.looks * 0.007;
         if (rng.NextDouble() < chance && data.family.Partner == null)
         {
-            Person p = data.family.AddPartner(NameGenerator.RandomSurname(rng), ch.age);
+            Person p = data.family.AddPartner(NameGenerator.RandomSurname(rng), ch.age, ch.gender, ch.orientation);
             ch.SetFlag("pareja");
             LogLine("¡Genial! " + p.name + " aceptó salir contigo.");
         }
@@ -1054,6 +1080,8 @@ public class GameManager : MonoBehaviour
         menuPanel.SetActive(false);
         createPanel.SetActive(true);
         SetAdvanceVisible(false);
+        chosenOrientation = "H";
+        RefreshOrientationButtons();
         if (nameInput != null) nameInput.text = "";
         UpdateHud();
     }
