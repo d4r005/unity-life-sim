@@ -14,6 +14,7 @@ public class Person
     public int age = 30;
     public bool alive = true;
     public int affection = 50;   // 0..100
+    public int portraitSeed = 0; // semilla del retrato cartoon
 
     public Person() { }
 
@@ -81,15 +82,19 @@ public class FamilyTree
 
     public void CreateDefaultParents(string surname)
     {
-        members.Add(new Person(NameGenerator.RandomMale(rngStatic) + " " + surname, "padre", "M", 28, 90));
-        members.Add(new Person(NameGenerator.RandomFemale(rngStatic) + " " + surname, "madre", "F", 26, 90));
+        Person dad = new Person(NameGenerator.RandomMale(rngStatic) + " " + surname, "padre", "M", 28, 90);
+        Person mom = new Person(NameGenerator.RandomFemale(rngStatic) + " " + surname, "madre", "F", 26, 90);
+        dad.portraitSeed = rngStatic.Next(); mom.portraitSeed = rngStatic.Next();
+        members.Add(dad); members.Add(mom);
         // un hermano con probabilidad
         if (rngStatic.NextDouble() < 0.6)
         {
             bool male = rngStatic.NextDouble() < 0.5;
             string n = male ? NameGenerator.RandomMale(rngStatic) : NameGenerator.RandomFemale(rngStatic);
-            members.Add(new Person(n + " " + surname, male ? "hermano" : "hermana", male ? "M" : "F",
-                rngStatic.Next(2, 8), 60));
+            Person sib = new Person(n + " " + surname, male ? "hermano" : "hermana", male ? "M" : "F",
+                rngStatic.Next(2, 8), 60);
+            sib.portraitSeed = rngStatic.Next();
+            members.Add(sib);
         }
     }
 
@@ -98,6 +103,7 @@ public class FamilyTree
         bool male = rngStatic.NextDouble() < 0.5;
         string n = (male ? NameGenerator.RandomMale(rngStatic) : NameGenerator.RandomFemale(rngStatic)) + " " + surname;
         Person p = new Person(n, "pareja", male ? "M" : "F", Math.Max(18, playerAge + rngStatic.Next(-4, 5)), 75);
+        p.portraitSeed = rngStatic.Next();
         members.Add(p);
         return p;
     }
@@ -107,6 +113,7 @@ public class FamilyTree
         bool male = rngStatic.NextDouble() < 0.5;
         string n = (male ? NameGenerator.RandomMale(rngStatic) : NameGenerator.RandomFemale(rngStatic)) + " " + surname;
         Person p = new Person(n, male ? "hijo" : "hija", male ? "M" : "F", 0, 95);
+        p.portraitSeed = rngStatic.Next();
         members.Add(p);
         return p;
     }

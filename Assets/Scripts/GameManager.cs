@@ -152,7 +152,7 @@ public class GameManager : MonoBehaviour
         menuPanel = UIBuilder.Panel(root, "Menu", new Vector2(0f, 1f), new Vector2(1f, 1f),
             new Vector2(16f, -872f), new Vector2(-16f, -260f), Paper).gameObject;
         menuTitle = UIBuilder.MakeText(menuPanel.transform, "MenuTitle", "", 28, Ink, TextAnchor.UpperCenter,
-            Vector2.zero, Vector2.one, new Vector2(24f, -292f), new Vector2(-24f, -240f), FontStyle.Bold);
+            Vector2.zero, Vector2.one, new Vector2(24f, -236f), new Vector2(-24f, -186f), FontStyle.Bold);
         menuHolder = UIBuilder.Panel(menuPanel.transform, "MenuHolder", new Vector2(0f, 0f), new Vector2(1f, 1f),
             new Vector2(12f, 16f), new Vector2(-12f, -248f), new Color(0f, 0f, 0f, 0f)).transform;
 
@@ -183,7 +183,7 @@ public class GameManager : MonoBehaviour
         // ---- Barra de menús inferior
         string[] menuNames = { "Familia", "Ocupación", "Actividad", "Bienes", "Delitos" };
         Action[] menuActions = {
-            () => OpenFamilyMenu(),
+            () => OpenTreeMenu(),
             () => OpenOccupationMenu(),
             () => OpenActivitiesMenu(),
             () => OpenAssetsMenu(),
@@ -503,14 +503,14 @@ public class GameManager : MonoBehaviour
         ch.portraitSeed = rng.Next(1, 1000000);
 
         FamilyTree f = new FamilyTree();
-        f.members.Add(new Person(old.name, old.gender == "F" ? "madre" : "padre", old.gender, old.age, 90) { alive = false });
+        f.members.Add(new Person(old.name, old.gender == "F" ? "madre" : "padre", old.gender, old.age, 90) { alive = false, portraitSeed = old.portraitSeed });
         Person oldPartner = data.family.Partner;
         if (oldPartner != null)
             f.members.Add(new Person(oldPartner.name, oldPartner.gender == "F" ? "madre" : "padre",
-                oldPartner.gender, oldPartner.age, oldPartner.affection));
+                oldPartner.gender, oldPartner.age, oldPartner.affection) { portraitSeed = oldPartner.portraitSeed });
         foreach (Person c in data.family.Children)
             if (c.alive && c.name != heir.name)
-                f.members.Add(new Person(c.name, c.relation, c.gender, c.age, c.affection));
+                f.members.Add(new Person(c.name, c.relation, c.gender, c.age, c.affection) { portraitSeed = c.portraitSeed });
 
         data.character = ch;
         data.family = f;
@@ -565,29 +565,160 @@ public class GameManager : MonoBehaviour
 
     // ---- familia y relaciones
 
-    private void OpenFamilyMenu()
+    // ---- arbol genealogico (vista estilo Family Go)
+
+    private static readonly Color TreeLineCol = new Color(0.36f, 0.31f, 0.25f, 0.9f);
+
+    private void OpenTreeMenu()
     {
+        if (state == State.Create || state == State.Death || data == null) return;
+        if (state != State.Menu) menuFromEvents = (state == State.Events);
+        state = State.Menu;
+        createPanel.SetActive(false); cardPanel.SetActive(false); deathPanel.SetActive(false);
+        menuPanel.SetActive(true);
+        UIBuilder.Clear(menuHolder);
+
         Character ch = data.character;
-        List<MenuRow> rows = new List<MenuRow>();
+        menuTitle.text = "Arbol familiar";
 
-        if (ch.age >= 18 && data.family.Partner == null)
-            rows.Add(new MenuRow("Buscar pareja (app de citas)", DoDating));
-        if (ch.age >= 6 && CountFriends() < 3)
-            rows.Add(new MenuRow("Buscar un amigo", DoMakeFriend));
+        Transform t = menuHolder;
 
+        List<Person> parents = new List<Person>();
+        List<Person> siblings = new List<Person>();
+        List<Person> children = new List<Person>();
         foreach (Person p in data.family.members)
         {
-            Person captured = p;
-            string label = p.name + "\n" + p.relation + ", " + p.age + " años" +
-                           (p.alive ? "  ·  afecto " + p.affection : "  ·  †");
-            rows.Add(new MenuRow(label, () => OpenMemberMenu(captured)));
+            if (p.relation == "padre" || p.relation == "madre") parents.Add(p);
+            else if (p.relation == "hermano" || p.relation == "hermana") siblings.Add(p);
+            else if (p.relation == "hijo" || p.relation == "hija") children.Add(p);
         }
-        OpenMenu("Familia y relaciones", rows);
+        Person partner = data.family.Partner;
+
+        float youCx = 264f, partCx = 404f;
+        float midX = partner != null ? (youCx + partCx) / 2f : youCx;
+
+        // lineas de conexion (se dibujan primero, quedan detras)
+        if (parents.Count > 0)
+        {
+            float px0 = 264f - (parents.Count - 1) * 45f, px1 = 264f + (parents.Count - 1) * 45f;
+            float left = siblings.Count > 0 ? Math.Max(44f, youCx - 120f * siblings.Count) : px0;
+            TreeLine(t, left, 98f, Math.Max(px1, 324f), 98f);
+            TreeLine(t, midX, 98f, midX, 106f);
+        }
+        if (partner != null) TreeLine(t, youCx + 24f, 130f, partCx - 24f, 130f);
+        if (children.Count > 0)
+        {
+            float c0 = midX - (children.Count - 1) * 50f, c1 = midX + (children.Count - 1) * 50f;
+            TreeLine(t, midX, 154f, midX, 198f);
+            TreeLine(t, c0, 198f, c1, 198f);
+        }
+
+        // padres
+        for (int i = 0; i < parents.Count; i++)
+        {
+            Person p = parents[i];
+            float cx = 264f + (i - (parents.Count - 1) / 2f) * 90f;
+            Person captured = p;
+            TreeNode(t, cx, 8f, p.portraitSeed, ShortName(p.name),
+                p.relation + ", " + p.age + (p.alive ? "" : "  †"), !p.alive,
+                () => OpenMemberMenu(captured));
+        }
+
+        // hermanos, tu y pareja
+        for (int i = 0; i < siblings.Count && i < 2; i++)
+        {
+            Person p = siblings[i];
+            float cx = Math.Max(44f, youCx - 120f * (i + 1));
+            Person captured = p;
+            TreeNode(t, cx, 106f, p.portraitSeed, ShortName(p.name),
+                p.relation + ", " + p.age, !p.alive, () => OpenMemberMenu(captured));
+        }
+        TreeNode(t, youCx, 106f, ch.portraitSeed, ShortName(ch.name), "TU", false, null);
+        if (partner != null)
+        {
+            Person captured = partner;
+            TreeNode(t, partCx, 106f, partner.portraitSeed, ShortName(partner.name),
+                partner.relation + ", " + partner.age, !partner.alive, () => OpenMemberMenu(captured));
+        }
+
+        // hijos
+        for (int i = 0; i < children.Count && i < 6; i++)
+        {
+            Person p = children[i];
+            float cx = midX + (i - (Math.Min(children.Count, 6) - 1) / 2f) * 100f;
+            Person captured = p;
+            TreeNode(t, cx, 206f, p.portraitSeed, ShortName(p.name),
+                p.relation + ", " + p.age, !p.alive, () => OpenMemberMenu(captured));
+        }
+
+        // botones laterales
+        UIBuilder.MakeButton(t, "BtnBack", "Volver", 17, new Color(0.99f, 0.98f, 0.94f),
+            new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(540f, -52f), new Vector2(676f, -8f), CloseMenu);
+        if (ch.age >= 18 && partner == null)
+            UIBuilder.MakeButton(t, "BtnDate", "Buscar pareja", 16, Accent,
+                new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(540f, -150f), new Vector2(676f, -106f), DoDating);
+        if (ch.age >= 6 && CountFriends() < 3)
+            UIBuilder.MakeButton(t, "BtnFriend", "Hacer amigo", 16, new Color(0.99f, 0.98f, 0.94f),
+                new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(540f, -202f), new Vector2(676f, -158f), DoMakeFriend);
+
+        UpdateHud();
+    }
+
+    private void TreeLine(Transform parent, float x1, float y1, float x2, float y2)
+    {
+        float x = Math.Min(x1, x2), y = Math.Min(y1, y2);
+        float w = Math.Max(4f, Math.Abs(x2 - x1)), h = Math.Max(4f, Math.Abs(y2 - y1));
+        UIBuilder.Plain(parent, "TreeLine", new Vector2(0f, 1f), new Vector2(0f, 1f),
+            new Vector2(x, -(y + h)), new Vector2(x + w, -y), TreeLineCol);
+    }
+
+    private void TreeNode(Transform parent, float cx, float topY, int seed, string name, string sub, bool dead, Action onClick)
+    {
+        GameObject node = new GameObject("Node", typeof(Image));
+        node.transform.SetParent(parent, false);
+        RectTransform rt = node.GetComponent<RectTransform>();
+        rt.anchorMin = new Vector2(0f, 1f); rt.anchorMax = new Vector2(0f, 1f);
+        rt.offsetMin = new Vector2(cx - 24f, -topY - 48f);
+        rt.offsetMax = new Vector2(cx + 24f, -topY);
+        Image img = node.GetComponent<Image>();
+        img.sprite = UIBuilder.Avatar(seed);
+        if (onClick != null)
+        {
+            Button btn = node.AddComponent<Button>();
+            btn.targetGraphic = img;
+            btn.onClick.AddListener(() => onClick());
+        }
+        if (dead)
+        {
+            GameObject veilGO = new GameObject("Veil", typeof(Image));
+            veilGO.transform.SetParent(node.transform, false);
+            RectTransform v = veilGO.GetComponent<RectTransform>();
+            v.anchorMin = Vector2.zero; v.anchorMax = Vector2.one;
+            v.offsetMin = Vector2.zero; v.offsetMax = Vector2.zero;
+            veilGO.GetComponent<Image>().color = new Color(0.95f, 0.95f, 0.95f, 0.55f);
+        }
+        UIBuilder.MakeText(parent, "NodeName", name, 15, Ink, TextAnchor.UpperCenter,
+            new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(cx - 60f, -topY - 66f), new Vector2(cx + 60f, -topY - 48f), FontStyle.Bold);
+        UIBuilder.MakeText(parent, "NodeSub", sub, 12, Sub, TextAnchor.UpperCenter,
+            new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(cx - 60f, -topY - 82f), new Vector2(cx + 60f, -topY - 66f));
+    }
+
+    private static string ShortName(string fullName)
+    {
+        if (string.IsNullOrEmpty(fullName)) return "...";
+        string[] parts = fullName.Split(' ');
+        return parts.Length > 1 ? parts[0] : fullName;
     }
 
     private void OpenMemberMenu(Person p)
     {
         List<MenuRow> rows = new List<MenuRow>();
+        if (!p.alive)
+        {
+            rows.Add(new MenuRow(p.name + " fallecio a los " + p.age + " anos.", null, false));
+            OpenMenu("En memoria", rows);
+            return;
+        }
         rows.Add(new MenuRow("Conversar (afecto +3)", () => TalkTo(p, 3, "Pasaste un rato agradable con " + p.name + ".")));
         rows.Add(new MenuRow("Dar un cumplido (afecto +4)", () => TalkTo(p, 4, p.name + " agradeció tu cumplido.")));
         rows.Add(new MenuRow("Regalar $2,000 (afecto +8)", () => GiftTo(p), data.character.money >= 2000));
@@ -648,7 +779,7 @@ public class GameManager : MonoBehaviour
             string n = (male ? NameGenerator.RandomMale(rng) : NameGenerator.RandomFemale(rng)) +
                        " " + NameGenerator.RandomSurname(rng);
             data.family.members.Add(new Person(n, male ? "amigo" : "amiga", male ? "M" : "F",
-                Math.Max(6, ch.age + rng.Next(-4, 5)), 55));
+                Math.Max(6, ch.age + rng.Next(-4, 5)), 55) { portraitSeed = rng.Next() });
             LogLine("Hiciste una nueva amistad: " + n + ".");
         }
         else LogLine("Nadie pareció interesado en platicar contigo hoy.");

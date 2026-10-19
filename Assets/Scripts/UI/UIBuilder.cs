@@ -159,7 +159,7 @@ public static class UIBuilder
                 // sonrisa
                 if (y >= 70 && y <= 72 && x >= 59 && x <= 69) c = ink;
 
-                px[y * S + x] = c;
+                px[(S - 1 - y) * S + x] = c;
             }
         }
         tex.SetPixels32(px);
