@@ -48,6 +48,25 @@ public static class ProjectSetup
                 dirty = true;
             }
 
+            // Icono de la app (Assets/Art/app_icon.png)
+            Texture2D icon = AssetDatabase.LoadAssetAtPath<Texture2D>("Assets/Art/app_icon.png");
+            if (icon != null)
+            {
+                try
+                {
+                    PlayerSettings.SetIconsForTargetGroup(NamedBuildTarget.Android, new Texture2D[] { icon });
+                    dirty = true;
+                }
+                catch (System.Exception e) { Debug.LogWarning("[ProjectSetup] Icono no asignado: " + e.Message); }
+            }
+
+            // Nombre de la app en el launcher
+            if (PlayerSettings.productName != "Generaciones")
+            {
+                PlayerSettings.productName = "Generaciones";
+                dirty = true;
+            }
+
             if (dirty)
             {
                 Debug.Log("[ProjectSetup] Ajustes de Android aplicados: Target SDK Auto (34+), min 24, IL2CPP/ARM64, portrait.");
