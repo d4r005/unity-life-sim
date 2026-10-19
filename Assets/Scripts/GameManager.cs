@@ -74,7 +74,7 @@ public class GameManager : MonoBehaviour
         cardText = UIBuilder.MakeText(cardPanel.transform, "Body", "", 29, new Color(0.88f, 0.88f, 0.92f), TextAnchor.UpperLeft,
             Vector2.zero, Vector2.one, new Vector2(24f, -430f), new Vector2(-24f, -150f));
         choicesHolder = UIBuilder.Panel(cardPanel.transform, "Choices", new Vector2(0f, 0f), new Vector2(1f, 0f),
-            new Vector2(16f, 16f), new Vector2(-16f, -320f), new Color(0f, 0f, 0f, 0f)).transform;
+            new Vector2(16f, 16f), new Vector2(-16f, 320f), new Color(0f, 0f, 0f, 0f)).transform;
 
         // Panel familiar
         familyPanel = UIBuilder.Panel(root, "Family", new Vector2(0f, 1f), new Vector2(1f, 1f),
@@ -88,7 +88,7 @@ public class GameManager : MonoBehaviour
         UIBuilder.MakeText(deathPanel.transform, "DeathTitle", "FIN DE LA VIDA", 40, Color.white, TextAnchor.UpperCenter,
             Vector2.zero, Vector2.one, new Vector2(20f, -60f), new Vector2(-20f, -10f));
         deathHolder = UIBuilder.Panel(deathPanel.transform, "DeathHolder", new Vector2(0f, 0f), new Vector2(1f, 0f),
-            new Vector2(16f, 16f), new Vector2(-16f, -520f), new Color(0f, 0f, 0f, 0f)).transform;
+            new Vector2(16f, 16f), new Vector2(-16f, 520f), new Color(0f, 0f, 0f, 0f)).transform;
 
         // Registro
         UIBuilder.Panel(root, "LogPanel", new Vector2(0f, 0f), new Vector2(1f, 0f),
@@ -100,10 +100,10 @@ public class GameManager : MonoBehaviour
         UIBuilder.MakeButton(root, "BtnFamily", "Familia", 24, Btn,
             new Vector2(0f, 0f), new Vector2(0f, 0f), new Vector2(16f, 16f), new Vector2(220f, 84f), ToggleFamily);
         UIBuilder.MakeButton(root, "BtnSave", "Guardar", 24, Btn,
-            new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(-160f, 16f), new Vector2(-16f, 84f),
-            () => { SaveSystem.Save(data); LogLine("Partida guardada."); });
+            new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(-160f, 16f), new Vector2(-16f, 84f),
+            () => { if (data != null) { SaveSystem.Save(data); LogLine("Partida guardada."); } });
         UIBuilder.MakeButton(root, "BtnNew", "Nueva vida", 24, Danger,
-            new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(-390f, 16f), new Vector2(-176f, 84f), () => {
+            new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(-390f, 16f), new Vector2(-176f, 84f), () => {
                 SaveSystem.Delete();
                 ShowCreate();
             });
