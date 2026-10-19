@@ -47,7 +47,7 @@ public class CrimeDef
 
     public CrimeDef(string name, int minAge, int reqSmarts, long reward, long fine, int happinessHit, string sLog, string cLog)
     { this.name = name; this.minAge = minAge; this.reqSmarts = reqSmarts; this.reward = reward; this.fine = fine;
-      happinessHit = happinessHit; successLog = sLog; caughtLog = cLog; }
+      this.happinessHit = happinessHit; successLog = sLog; caughtLog = cLog; }
 }
 
 public static class Catalog

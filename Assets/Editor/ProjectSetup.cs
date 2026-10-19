@@ -54,7 +54,9 @@ public static class ProjectSetup
             {
                 try
                 {
-                    PlayerSettings.SetIconsForTargetGroup(NamedBuildTarget.Android, new Texture2D[] { icon });
+#pragma warning disable 618
+                    PlayerSettings.SetIconsForTargetGroup(BuildTargetGroup.Android, new Texture2D[] { icon });
+#pragma warning restore 618
                     dirty = true;
                 }
                 catch (System.Exception e) { Debug.LogWarning("[ProjectSetup] Icono no asignado: " + e.Message); }
