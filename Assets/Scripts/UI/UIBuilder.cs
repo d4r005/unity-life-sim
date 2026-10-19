@@ -15,7 +15,7 @@ public static class UIBuilder
     private const int OutlineW = 3;
     private static readonly Dictionary<string, Sprite> spriteCache = new Dictionary<string, Sprite>();
 
-    private static readonly Color Ink = new Color(0.14f, 0.13f, 0.12f, 1f);
+    private static readonly Color Ink = new Color(0.14f, 0.13f, 0.12f, 1f);   // tinta del avatar (constante)
 
     public static Font DefaultFont()
     {
@@ -53,7 +53,8 @@ public static class UIBuilder
             {
                 bool outer = InRoundRect(x, y, TexSize, Corner, 0);
                 bool inner = InRoundRect(x, y, TexSize, Mathf.Max(1, Corner - OutlineW), OutlineW);
-                px[y * TexSize + x] = (outer && !inner) ? (Color32)Ink : (inner ? f32 : new Color32(0, 0, 0, 0));
+                Color32 edge = (Color32)Theme.OutlineInk;
+                px[y * TexSize + x] = (outer && !inner) ? edge : (inner ? f32 : new Color32(0, 0, 0, 0));
             }
         }
         tex.SetPixels32(px);

@@ -50,19 +50,20 @@ public class GameManager : MonoBehaviour
     private string chosenGender = "M";
 
     // ---- Paleta estilo Family Go: fondo claro, tinta oscura, contornos gruesos
-    private static readonly Color Bg = new Color(0.918f, 0.949f, 0.792f, 1f);      // verde-amarillo pálido
-    private static readonly Color Paper = new Color(0.995f, 0.99f, 0.97f, 1f);     // panel blanco
-    private static readonly Color Ink = new Color(0.14f, 0.13f, 0.12f, 1f);        // texto oscuro
-    private static readonly Color Sub = new Color(0.45f, 0.43f, 0.39f, 1f);        // texto secundario
-    private static readonly Color Accent = new Color(1.00f, 0.62f, 0.27f, 1f);     // naranja botón principal
-    private static readonly Color Cream = new Color(1.00f, 0.96f, 0.88f, 1f);      // botones pastilla
-    private static readonly Color Danger = new Color(0.86f, 0.36f, 0.36f, 1f);      // rojo
-    private static readonly Color Off = new Color(0.82f, 0.80f, 0.76f, 1f);        // deshabilitado
-    private static readonly Color AutoOn = new Color(0.44f, 0.74f, 0.38f, 1f);     // verde AUTO
-    private static readonly Color LogBg = new Color(0.965f, 0.955f, 0.905f, 1f);
+    private static Color Bg => Theme.Bg;
+    private static Color Paper => Theme.Paper;
+    private static Color Ink => Theme.Ink;
+    private static Color Sub => Theme.Sub;
+    private static Color Accent => Theme.Accent;
+    private static Color Cream => Theme.Cream;
+    private static Color Danger => Theme.Danger;
+    private static Color Off => Theme.Off;
+    private static Color AutoOn => Theme.AutoOn;
+    private static Color LogBg => Theme.LogBg;
 
     private void Awake()
     {
+        Theme.Dark = PlayerPrefs.GetInt("tema_oscuro", 0) == 1;
         EventDatabase.Reload();
         canvas = UIBuilder.CreateCanvas();
         BuildUI();
@@ -101,6 +102,9 @@ public class GameManager : MonoBehaviour
             FontStyle.Bold);
         hudSub = UIBuilder.MakeText(root, "HudSub", "", 18, Sub, TextAnchor.MiddleLeft,
             new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(122f, -126f), new Vector2(-160f, -92f));
+        UIBuilder.MakeButton(root, "BtnTheme", "Tema", 16, Cream,
+            new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(-244f, -146f), new Vector2(-154f, -108f),
+            ToggleTheme);
         UIBuilder.MakeButton(root, "BtnNewLife", "Nueva vida", 16, Danger,
             new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(-142f, -146f), new Vector2(-16f, -108f),
             () => { SaveSystem.Delete(); ShowCreate(); });
@@ -158,7 +162,7 @@ public class GameManager : MonoBehaviour
 
         // ---- Panel de muerte / legado
         deathPanel = UIBuilder.Panel(root, "Death", new Vector2(0f, 1f), new Vector2(1f, 1f),
-            new Vector2(16f, -872f), new Vector2(-16f, -260f), new Color(0.98f, 0.86f, 0.82f, 1f)).gameObject;
+            new Vector2(16f, -872f), new Vector2(-16f, -260f), Theme.DeathFill).gameObject;
         UIBuilder.MakeText(deathPanel.transform, "DeathTitle", "FIN DE LA VIDA", 38, Danger, TextAnchor.UpperCenter,
             Vector2.zero, Vector2.one, new Vector2(20f, -300f), new Vector2(-20f, -244f), FontStyle.Bold);
         deathHolder = UIBuilder.Panel(deathPanel.transform, "DeathHolder", new Vector2(0f, 0f), new Vector2(1f, 1f),
@@ -179,6 +183,7 @@ public class GameManager : MonoBehaviour
             new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(16f, -1128f), new Vector2(92f, -1036f),
             ToggleAuto);
         autoImage = autoButton.GetComponent<Image>();
+        autoImage.sprite = UIBuilder.OutlineSprite(autoPlay ? AutoOn : Off);
 
         // ---- Barra de menús inferior
         string[] menuNames = { "Familia", "Ocupación", "Actividad", "Bienes", "Delitos" };
@@ -445,8 +450,13 @@ public class GameManager : MonoBehaviour
         SaveSystem.Save(data);
     }
 
+    private string lastDeathReason = "";
+    private long lastDeathLegacy = 0;
+
     private void ShowDeath(string reason, long legacyGained)
     {
+        lastDeathReason = reason;
+        lastDeathLegacy = legacyGained;
         createPanel.SetActive(false);
         cardPanel.SetActive(false);
         menuPanel.SetActive(false);
@@ -567,7 +577,7 @@ public class GameManager : MonoBehaviour
 
     // ---- arbol genealogico (vista estilo Family Go)
 
-    private static readonly Color TreeLineCol = new Color(0.36f, 0.31f, 0.25f, 0.9f);
+    private static Color TreeLineCol => Theme.TreeLine;
 
     private void OpenTreeMenu()
     {
@@ -1081,6 +1091,30 @@ public class GameManager : MonoBehaviour
         log.Add(line);
         if (log.Count > 6) log.RemoveAt(0);
         logText.text = string.Join("\n", log.ToArray());
+    }
+
+    /// <summary>Cambia entre tema claro y oscuro y reconstruye la interfaz.</summary>
+    private void ToggleTheme()
+    {
+        Theme.Dark = !Theme.Dark;
+        PlayerPrefs.SetInt("tema_oscuro", Theme.Dark ? 1 : 0);
+        PlayerPrefs.Save();
+
+        State previous = state;
+        if (previous == State.Menu) previous = menuFromEvents ? State.Events : State.Summary;
+
+        Destroy(canvas.gameObject);
+        canvas = UIBuilder.CreateCanvas();
+        BuildUI();
+
+        switch (previous)
+        {
+            case State.Create: ShowCreate(); break;
+            case State.Events: ShowEvent(); break;
+            case State.Death: ShowDeath(lastDeathReason, lastDeathLegacy); break;
+            default: ShowSummary(); break;
+        }
+        LogLine(Theme.Dark ? "Tema oscuro activado." : "Tema claro activado.");
     }
 
     private static string FmtMoney(long v)
