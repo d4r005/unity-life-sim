@@ -1,115 +1,175 @@
-using System;
+using System.Collections.Generic;
 using UnityEngine;
 using UnityEngine.Events;
 using UnityEngine.UI;
+using UnityEngine.EventSystems;
 
 /// <summary>
-/// Construye toda la interfaz uGUI desde código, con esquinas redondeadas,
-/// avatares procedurales y barras de progreso. No hace falta armar escenas.
+/// Construye toda la interfaz desde código (uGUI), estilo cartoon con
+/// contornos negros gruesos y esquinas redondeadas, generado en runtime.
 /// </summary>
 public static class UIBuilder
 {
-    private static Font _font;
+    private const int TexSize = 64;
+    private const int Corner = 18;
+    private const int OutlineW = 3;
+    private static readonly Dictionary<string, Sprite> spriteCache = new Dictionary<string, Sprite>();
+
+    private static readonly Color Ink = new Color(0.14f, 0.13f, 0.12f, 1f);
+
     public static Font DefaultFont()
     {
-        if (_font == null)
-        {
-            try { _font = Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf"); }
-            catch { _font = Resources.GetBuiltinResource<Font>("Arial.ttf"); }
-        }
-        return _font;
+        try { return Resources.GetBuiltinResource<Font>("LegacyRuntime.ttf"); }
+        catch { return Resources.GetBuiltinResource<Font>("Arial.ttf"); }
     }
 
-    // ------------------------------------------------------------ sprites procedurales
+    // ------------------------------------------------------------ sprites
 
-    private static Sprite _rounded;
-    /// <summary>Rectángulo blanco con esquinas redondeadas (9-slice), para teñir con Image.color.</summary>
-    public static Sprite Rounded()
+    /// <summary>¿El punto (x,y) está dentro del rounded-rect con inset y radio r?</summary>
+    private static bool InRoundRect(int x, int y, int size, int r, int inset)
     {
-        if (_rounded != null) return _rounded;
-        const int size = 96;
-        const int r = 22;
-        var px = new Color32[size * size];
-        for (int y = 0; y < size; y++)
+        int lo = inset, hi = size - inset;
+        if (x < lo || y < lo || x >= hi || y >= hi) return false;
+        int cx = Mathf.Min(x - lo, hi - 1 - x);
+        int cy = Mathf.Min(y - lo, hi - 1 - y);
+        if (cx >= r || cy >= r) return true;
+        int dx = cx - r, dy = cy - r;
+        return dx * dx + dy * dy <= r * r;
+    }
+
+    /// <summary>Sprite 9-slice: relleno del color dado con contorno negro grueso estilo cartoon.</summary>
+    public static Sprite OutlineSprite(Color fill)
+    {
+        string key = "O:" + fill.r.ToString("0.000") + fill.g.ToString("0.000") + fill.b.ToString("0.000") + fill.a.ToString("0.00");
+        if (spriteCache.TryGetValue(key, out Sprite cached)) return cached;
+
+        Texture2D tex = new Texture2D(TexSize, TexSize, TextureFormat.RGBA32, false);
+        tex.wrapMode = TextureWrapMode.Clamp;
+        Color32[] px = new Color32[TexSize * TexSize];
+        Color32 f32 = fill;
+        for (int y = 0; y < TexSize; y++)
         {
-            for (int x = 0; x < size; x++)
+            for (int x = 0; x < TexSize; x++)
             {
-                int cx = Math.Min(x, size - 1 - x);
-                int cy = Math.Min(y, size - 1 - y);
-                bool inside;
-                if (cx >= r || cy >= r) inside = true;
-                else
-                {
-                    int dx = cx - r, dy = cy - r;
-                    inside = dx * dx + dy * dy <= r * r;
-                }
-                px[y * size + x] = inside ? new Color32(255, 255, 255, 255) : new Color32(0, 0, 0, 0);
+                bool outer = InRoundRect(x, y, TexSize, Corner, 0);
+                bool inner = InRoundRect(x, y, TexSize, Mathf.Max(1, Corner - OutlineW), OutlineW);
+                px[y * TexSize + x] = (outer && !inner) ? (Color32)Ink : (inner ? f32 : new Color32(0, 0, 0, 0));
             }
         }
-        var tex = new Texture2D(size, size, TextureFormat.RGBA32, false);
         tex.SetPixels32(px);
         tex.Apply();
-        _rounded = Sprite.Create(tex, new Rect(0, 0, size, size), new Vector2(0.5f, 0.5f),
-            100f, 0, SpriteMeshType.FullRect, new Vector4(r, r, r, r));
-        return _rounded;
+        Sprite sp = Sprite.Create(tex, new Rect(0, 0, TexSize, TexSize),
+            new Vector2(0.5f, 0.5f), 100f, 0, SpriteMeshType.FullRect,
+            new Vector4(Corner, Corner, Corner, Corner));
+        spriteCache[key] = sp;
+        return sp;
     }
 
-    private static Color32 Pick(System.Random r, int[][] palettes)
+    /// <summary>Sprite 9-slice simple: relleno del color, sin contorno.</summary>
+    public static Sprite RoundedSprite(Color fill)
     {
-        int[] p = palettes[r.Next(palettes.Length)];
-        return new Color32((byte)p[0], (byte)p[1], (byte)p[2], 255);
+        string key = "R:" + fill.r.ToString("0.000") + fill.g.ToString("0.000") + fill.b.ToString("0.000") + fill.a.ToString("0.00");
+        if (spriteCache.TryGetValue(key, out Sprite cached)) return cached;
+
+        Texture2D tex = new Texture2D(TexSize, TexSize, TextureFormat.RGBA32, false);
+        tex.wrapMode = TextureWrapMode.Clamp;
+        Color32[] px = new Color32[TexSize * TexSize];
+        Color32 f32 = fill;
+        for (int y = 0; y < TexSize; y++)
+            for (int x = 0; x < TexSize; x++)
+                px[y * TexSize + x] = InRoundRect(x, y, TexSize, Corner, 0) ? f32 : new Color32(0, 0, 0, 0);
+        tex.SetPixels32(px);
+        tex.Apply();
+        Sprite sp = Sprite.Create(tex, new Rect(0, 0, TexSize, TexSize),
+            new Vector2(0.5f, 0.5f), 100f, 0, SpriteMeshType.FullRect,
+            new Vector4(Corner, Corner, Corner, Corner));
+        spriteCache[key] = sp;
+        return sp;
     }
 
-    /// <summary>Retrato procedural determinista a partir de una semilla.</summary>
+    /// <summary>Retrato cartoon determinista a partir de la semilla del personaje.</summary>
     public static Sprite Avatar(int seed)
     {
-        var r = new System.Random(seed);
-        int[][] skins = { new[] { 244, 204, 171 }, new[] { 226, 181, 141 }, new[] { 186, 137, 98 }, new[] { 133, 87, 60 }, new[] { 94, 60, 42 } };
-        int[][] hairs = { new[] { 32, 24, 22 }, new[] { 82, 52, 26 }, new[] { 168, 116, 54 }, new[] { 224, 176, 96 }, new[] { 150, 50, 40 } };
-        int[][] shirts = { new[] { 74, 122, 191 }, new[] { 200, 82, 72 }, new[] { 90, 160, 96 }, new[] { 140, 100, 170 }, new[] { 60, 74, 92 } };
-        Color32 skin = Pick(r, skins), hair = Pick(r, hairs), shirt = Pick(r, shirts);
-        Color32 bg1 = new Color32(38, 42, 54, 255), bg2 = new Color32(30, 33, 43, 255);
+        string key = "A:" + seed;
+        if (spriteCache.TryGetValue(key, out Sprite cached)) return cached;
 
-        const int S = 112;
-        var px = new Color32[S * S];
+        System.Random r = new System.Random(seed);
+        Color32[] skins = {
+            new Color32(255, 219, 183, 255), new Color32(240, 184, 140, 255),
+            new Color32(198, 134, 92, 255), new Color32(141, 90, 62, 255),
+            new Color32(92, 58, 40, 255) };
+        Color32[] hairs = {
+            new Color32(45, 36, 30, 255), new Color32(105, 66, 38, 255),
+            new Color32(196, 148, 84, 255), new Color32(220, 88, 60, 255),
+            new Color32(120, 120, 125, 255), new Color32(240, 230, 200, 255) };
+        Color32[] shirts = {
+            new Color32(86, 160, 220, 255), new Color32(235, 110, 150, 255),
+            new Color32(110, 190, 110, 255), new Color32(250, 170, 70, 255),
+            new Color32(150, 120, 200, 255), new Color32(240, 240, 235, 255) };
+        Color32 skin = skins[r.Next(skins.Length)];
+        Color32 hair = hairs[r.Next(hairs.Length)];
+        Color32 shirt = shirts[r.Next(shirts.Length)];
+        Color32 ink = (Color32)Ink;
+        Color32 blush = new Color32(250, 160, 150, 255);
+        Color32 paper = new Color32(253, 250, 242, 255);
+
+        int S = 128;
+        Texture2D tex = new Texture2D(S, S, TextureFormat.RGBA32, false);
+        tex.wrapMode = TextureWrapMode.Clamp;
+        Color32[] px = new Color32[S * S];
         for (int y = 0; y < S; y++)
         {
             for (int x = 0; x < S; x++)
             {
-                Color32 c;
-                // fondo: degradado diagonal
-                float t = (x + (S - y)) / (2f * S);
-                c = Color32.Lerp(bg2, bg1, t);
+                Color32 c = new Color32(0, 0, 0, 0);
+                int dy = y - 58; int dx = x - 64;
 
-                int dyTop = S - 1 - y; // 0 abajo
-                // torso (hombros redondeados)
-                float bx = Math.Abs(x - 56f);
-                if (dyTop <= 30 && bx <= 34f - (30 - dyTop) * 0.45f) c = shirt;
-                // cuello
-                if (dyTop <= 36 && bx <= 7f) c = skin;
+                // fondo tipo placa circular con contorno
+                int bd = Mathf.Max(Mathf.Abs(x - 64), Mathf.Abs(y - 64));
+                int bc = (int)Mathf.Sqrt((x - 64) * (x - 64) + (y - 64) * (y - 64));
+                if (bc <= 62) c = paper;
+                if (bc > 58 && bc <= 62) c = ink;
+
+                // torso
+                if (y >= 92 && x >= 40 && x <= 88)
+                {
+                    int edge = Mathf.Min(x - 40, 88 - x, y - 92);
+                    c = shirt;
+                    if (edge < 3) c = ink;
+                }
+
                 // cabeza
-                int hx = x - 56, hy = dyTop - 52; // centro (56, 52) desde arriba
-                float hd = (float)Math.Sqrt(hx * hx + hy * hy);
-                if (hd <= 23f) c = skin;
-                // pelo: arco superior + laterales
-                if (hd <= 24f && hy < -6f) c = hair;
-                else if (hd <= 24f && Math.Abs(hx) > 13f && hy < 6f) c = hair;
-                // ojos
-                float e1 = (float)Math.Sqrt((x - 48) * (x - 48) + (dyTop - 55) * (dyTop - 55));
-                float e2 = (float)Math.Sqrt((x - 64) * (x - 64) + (dyTop - 55) * (dyTop - 55));
-                if (e1 <= 2.6f || e2 <= 2.6f) c = new Color32(26, 26, 30, 255);
+                float hd = Mathf.Sqrt(dx * dx + dy * dy);
+                if (hd <= 30) c = skin;
+                if (hd > 27 && hd <= 30) c = ink;
+
+                // cabello (casquete superior + patillas)
+                if (hd <= 30 && (dy < -6 || (Mathf.Abs(dx) > 22 && dy < 10)))
+                    c = hair;
+                if (dy < -6 && hd <= 30 && dy > -14 && Mathf.Abs(dx) < 10) c = hair; // flequillo
+
+                // ojos y mejillas
+                float e1 = Mathf.Sqrt((x - 54) * (x - 54) + (y - 58) * (y - 58));
+                float e2 = Mathf.Sqrt((x - 74) * (x - 74) + (y - 58) * (y - 58));
+                if (e1 <= 2.6f || e2 <= 2.6f) c = ink;
+                float b1 = Mathf.Sqrt((x - 46) * (x - 46) + (y - 66) * (y - 66));
+                float b2 = Mathf.Sqrt((x - 82) * (x - 82) + (y - 66) * (y - 66));
+                if ((b1 <= 3.4f || b2 <= 3.4f) && dy > -20) c = blush;
+
                 // sonrisa
-                if (Math.Abs(hy - 11f) < 1.4f && Math.Abs(hx) < 6f) c = new Color32(150, 84, 66, 255);
+                if (y >= 70 && y <= 72 && x >= 59 && x <= 69) c = ink;
+
                 px[y * S + x] = c;
             }
         }
-        var tex = new Texture2D(S, S, TextureFormat.RGBA32, false);
         tex.SetPixels32(px);
         tex.Apply();
-        return Sprite.Create(tex, new Rect(0, 0, S, S), new Vector2(0.5f, 0.5f), 100f);
+        Sprite sp = Sprite.Create(tex, new Rect(0, 0, S, S), new Vector2(0.5f, 0.5f), 100f);
+        spriteCache[key] = sp;
+        return sp;
     }
 
-    // ------------------------------------------------------------ controles
+    // ------------------------------------------------------------ widgets
 
     public static Canvas CreateCanvas()
     {
@@ -118,14 +178,10 @@ public static class UIBuilder
         c.renderMode = RenderMode.ScreenSpaceOverlay;
         CanvasScaler s = go.GetComponent<CanvasScaler>();
         s.uiScaleMode = CanvasScaler.ScaleMode.ScaleWithScreenSize;
-        s.referenceResolution = new Vector2(720f, 1280f);
+        s.referenceResolution = new Vector2(720, 1280);
         s.matchWidthOrHeight = 0.5f;
-        if (UnityEngine.EventSystems.EventSystem.current == null)
-        {
-            new GameObject("EventSystem",
-                typeof(UnityEngine.EventSystems.EventSystem),
-                typeof(UnityEngine.EventSystems.StandaloneInputModule));
-        }
+        if (EventSystem.current == null)
+            new GameObject("EventSystem", typeof(EventSystem), typeof(StandaloneInputModule));
         return c;
     }
 
@@ -137,9 +193,9 @@ public static class UIBuilder
         RectTransform rt = go.GetComponent<RectTransform>();
         rt.anchorMin = aMin; rt.anchorMax = aMax; rt.offsetMin = oMin; rt.offsetMax = oMax;
         Image img = go.GetComponent<Image>();
-        img.sprite = Rounded();
+        img.color = Color.white;
+        img.sprite = color.a > 0.01f ? OutlineSprite(color) : RoundedSprite(color);
         img.type = Image.Type.Sliced;
-        img.color = color;
         return img;
     }
 
@@ -167,30 +223,45 @@ public static class UIBuilder
         t.font = DefaultFont();
         t.text = content;
         t.fontSize = size;
-        t.fontStyle = style;
         t.color = color;
         t.alignment = align;
+        t.fontStyle = style;
         t.horizontalOverflow = HorizontalWrapMode.Wrap;
-        t.verticalOverflow = VerticalWrapMode.Overflow;
+        t.verticalOverflow = VerticalWrapMode.Truncate;
+        t.supportRichText = false;
         return t;
     }
 
-    public static Button MakeButton(Transform parent, string name, string label, int size, Color bg,
-                                    Vector2 aMin, Vector2 aMax, Vector2 oMin, Vector2 oMax, UnityAction onClick)
+    public static Button MakeButton(Transform parent, string name, string label, int size, Color fill,
+                                    Vector2 aMin, Vector2 aMax, Vector2 oMin, Vector2 oMax,
+                                    UnityAction onClick)
     {
         GameObject go = new GameObject(name, typeof(Image), typeof(Button));
         go.transform.SetParent(parent, false);
         RectTransform rt = go.GetComponent<RectTransform>();
         rt.anchorMin = aMin; rt.anchorMax = aMax; rt.offsetMin = oMin; rt.offsetMax = oMax;
         Image img = go.GetComponent<Image>();
-        img.sprite = Rounded();
+        img.color = Color.white;
+        img.sprite = OutlineSprite(fill);
         img.type = Image.Type.Sliced;
-        img.color = bg;
         Button b = go.GetComponent<Button>();
         if (onClick != null) b.onClick.AddListener(onClick);
-        Text t = MakeText(go.transform, "Label", label, size, Color.white, TextAnchor.MiddleCenter,
-            Vector2.zero, Vector2.one, Vector2.zero, Vector2.zero);
-        t.raycastTarget = false;
+
+        GameObject lblGo = new GameObject("Label", typeof(Text));
+        lblGo.transform.SetParent(go.transform, false);
+        RectTransform lrt = lblGo.GetComponent<RectTransform>();
+        lrt.anchorMin = Vector2.zero; lrt.anchorMax = Vector2.one;
+        lrt.offsetMin = new Vector2(6, 4); lrt.offsetMax = new Vector2(-6, -4);
+        Text t = lblGo.GetComponent<Text>();
+        t.font = DefaultFont();
+        t.text = label;
+        t.fontSize = size;
+        t.alignment = TextAnchor.MiddleCenter;
+        t.fontStyle = FontStyle.Bold;
+        // texto oscuro sobre fondos claros, blanco sobre oscuros
+        t.color = (fill.r + fill.g + fill.b) / 3f > 0.5f ? new Color(0.14f, 0.13f, 0.12f) : Color.white;
+        t.horizontalOverflow = HorizontalWrapMode.Wrap;
+        t.verticalOverflow = VerticalWrapMode.Truncate;
         return b;
     }
 
@@ -202,33 +273,41 @@ public static class UIBuilder
         RectTransform rt = go.GetComponent<RectTransform>();
         rt.anchorMin = aMin; rt.anchorMax = aMax; rt.offsetMin = oMin; rt.offsetMax = oMax;
         Image img = go.GetComponent<Image>();
-        img.sprite = Rounded();
+        img.color = Color.white;
+        img.sprite = OutlineSprite(new Color(1f, 1f, 1f, 1f));
         img.type = Image.Type.Sliced;
-        img.color = new Color(0.10f, 0.10f, 0.12f, 1f);
         InputField inp = go.GetComponent<InputField>();
+
         GameObject txtGo = new GameObject("Text", typeof(Text));
         txtGo.transform.SetParent(go.transform, false);
         RectTransform trt = txtGo.GetComponent<RectTransform>();
         trt.anchorMin = Vector2.zero; trt.anchorMax = Vector2.one;
-        trt.offsetMin = new Vector2(14f, 4f); trt.offsetMax = new Vector2(-14f, -4f);
+        trt.offsetMin = new Vector2(14, 6); trt.offsetMax = new Vector2(-14, -6);
         Text t = txtGo.GetComponent<Text>();
-        t.font = DefaultFont(); t.fontSize = 30; t.color = Color.white;
-        t.supportRichText = false;
+        t.font = DefaultFont();
+        t.fontSize = 26;
+        t.color = new Color(0.14f, 0.13f, 0.12f);
+        t.alignment = TextAnchor.MiddleLeft;
         inp.textComponent = t;
+
         GameObject phGo = new GameObject("Placeholder", typeof(Text));
         phGo.transform.SetParent(go.transform, false);
         RectTransform prt = phGo.GetComponent<RectTransform>();
         prt.anchorMin = Vector2.zero; prt.anchorMax = Vector2.one;
-        prt.offsetMin = new Vector2(14f, 4f); prt.offsetMax = new Vector2(-14f, -4f);
+        prt.offsetMin = new Vector2(14, 6); prt.offsetMax = new Vector2(-14, -6);
         Text ph = phGo.GetComponent<Text>();
-        ph.font = DefaultFont(); ph.fontSize = 30; ph.fontStyle = FontStyle.Italic;
-        ph.color = new Color(1f, 1f, 1f, 0.4f); ph.text = placeholder;
+        ph.font = DefaultFont();
+        ph.fontSize = 26;
+        ph.text = placeholder;
+        ph.color = new Color(0.6f, 0.58f, 0.55f);
+        ph.supportRichText = false;
         inp.placeholder = ph;
         return inp;
     }
 
     public static void Clear(Transform holder)
     {
-        for (int i = holder.childCount - 1; i >= 0; i--) UnityEngine.Object.Destroy(holder.GetChild(i).gameObject);
+        for (int i = holder.childCount - 1; i >= 0; i--)
+            Object.Destroy(holder.GetChild(i).gameObject);
     }
 }
