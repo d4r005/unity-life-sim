@@ -1,4 +1,5 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using UnityEngine;
 
@@ -8,6 +9,7 @@ public class SaveData
 {
     public Character character = new Character();
     public FamilyTree family = new FamilyTree();
+    public List<string> assets = new List<string>();
     public long dynastyLegacy = 0;     // legado acumulado de toda la dinastía
     public int currentYear = 1;         // años vividos del personaje actual
 }

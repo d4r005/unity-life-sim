@@ -4,12 +4,21 @@ using UnityEngine;
 using UnityEngine.UI;
 
 /// <summary>
-/// Corazón del juego: máquina de estados Nacer → Eventos → Resumen → Año siguiente → ... → Muerte → Legado.
-/// Se coloca en un GameObject vacío en una escena nueva y todo lo demás se genera solo.
+/// Corazón del juego: nacer → eventos → resumen → año siguiente → ... → muerte → legado,
+/// con menús de acción estilo BitLife: Ocupación, Actividades, Relaciones, Bienes y Delitos.
 /// </summary>
 public class GameManager : MonoBehaviour
 {
-    private enum State { Create, Events, Summary, Death, Legacy }
+    private enum State { Create, Events, Summary, Death, Menu }
+
+    private class MenuRow
+    {
+        public string label;
+        public bool enabled = true;
+        public Action onClick;
+        public MenuRow(string label, Action onClick, bool enabled = true)
+        { this.label = label; this.onClick = onClick; this.enabled = enabled; }
+    }
 
     private SaveData data;
     private State state;
@@ -17,12 +26,13 @@ public class GameManager : MonoBehaviour
     private List<LifeEvent> yearEvents = new List<LifeEvent>();
     private int eventIndex;
     private readonly List<string> log = new List<string>();
+    private bool menuFromEvents = false;
 
     private Canvas canvas;
     private Text hudName, hudStats, logText;
-    private GameObject cardPanel, createPanel, deathPanel, familyPanel;
-    private Transform choicesHolder, deathHolder, familyHolder;
-    private Text cardTitle, cardText;
+    private GameObject cardPanel, createPanel, deathPanel, menuPanel;
+    private Transform choicesHolder, deathHolder, menuHolder;
+    private Text cardTitle, cardText, menuTitle;
     private InputField nameInput;
     private string chosenGender = "M";
 
@@ -32,6 +42,8 @@ public class GameManager : MonoBehaviour
     private static readonly Color Accent = new Color(0.22f, 0.45f, 0.75f, 1f);
     private static readonly Color Danger = new Color(0.70f, 0.22f, 0.22f, 1f);
     private static readonly Color Btn = new Color(0.24f, 0.28f, 0.36f, 1f);
+    private static readonly Color BtnOff = new Color(0.18f, 0.18f, 0.20f, 1f);
+    private static readonly Color Ok = new Color(0.25f, 0.45f, 0.25f, 1f);
 
     private void Awake()
     {
@@ -62,9 +74,12 @@ public class GameManager : MonoBehaviour
         UIBuilder.Panel(root, "Header", new Vector2(0f, 1f), new Vector2(1f, 1f),
             new Vector2(0f, -110f), new Vector2(0f, 0f), Card);
         hudName = UIBuilder.MakeText(root, "HudName", "", 30, Color.white, TextAnchor.MiddleLeft,
-            new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(20f, -104f), new Vector2(-20f, -66f));
-        hudStats = UIBuilder.MakeText(root, "HudStats", "", 24, new Color(0.85f, 0.85f, 0.9f), TextAnchor.MiddleLeft,
+            new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(20f, -104f), new Vector2(-170f, -66f));
+        hudStats = UIBuilder.MakeText(root, "HudStats", "", 22, new Color(0.85f, 0.85f, 0.9f), TextAnchor.MiddleLeft,
             new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(20f, -64f), new Vector2(-20f, -24f));
+        UIBuilder.MakeButton(root, "BtnNewLife", "Nueva vida", 20, Danger,
+            new Vector2(1f, 1f), new Vector2(1f, 1f), new Vector2(-150f, -102f), new Vector2(-16f, -54f),
+            () => { SaveSystem.Delete(); ShowCreate(); });
 
         // Tarjeta central (eventos y resúmenes)
         cardPanel = UIBuilder.Panel(root, "Card", new Vector2(0f, 1f), new Vector2(1f, 1f),
@@ -72,15 +87,17 @@ public class GameManager : MonoBehaviour
         cardTitle = UIBuilder.MakeText(cardPanel.transform, "Title", "", 36, Color.white, TextAnchor.UpperCenter,
             Vector2.zero, Vector2.one, new Vector2(20f, -110f), new Vector2(-20f, -20f));
         cardText = UIBuilder.MakeText(cardPanel.transform, "Body", "", 29, new Color(0.88f, 0.88f, 0.92f), TextAnchor.UpperLeft,
-            Vector2.zero, Vector2.one, new Vector2(24f, -430f), new Vector2(-24f, -150f));
+            Vector2.zero, Vector2.one, new Vector2(24f, -400f), new Vector2(-24f, -150f));
         choicesHolder = UIBuilder.Panel(cardPanel.transform, "Choices", new Vector2(0f, 0f), new Vector2(1f, 0f),
             new Vector2(16f, 16f), new Vector2(-16f, 320f), new Color(0f, 0f, 0f, 0f)).transform;
 
-        // Panel familiar
-        familyPanel = UIBuilder.Panel(root, "Family", new Vector2(0f, 1f), new Vector2(1f, 1f),
-            new Vector2(16f, -700f), new Vector2(-16f, -130f), Card).gameObject;
-        familyHolder = UIBuilder.Panel(familyPanel.transform, "FamilyHolder", Vector2.zero, Vector2.one,
-            new Vector2(16f, 16f), new Vector2(-16f, -16f), new Color(0f, 0f, 0f, 0f)).transform;
+        // Panel de menús (ocupación, actividades, familia, bienes, delitos)
+        menuPanel = UIBuilder.Panel(root, "Menu", new Vector2(0f, 1f), new Vector2(1f, 1f),
+            new Vector2(16f, -860f), new Vector2(-16f, -130f), Card).gameObject;
+        menuTitle = UIBuilder.MakeText(menuPanel.transform, "MenuTitle", "", 34, Color.white, TextAnchor.UpperCenter,
+            Vector2.zero, Vector2.one, new Vector2(20f, -80f), new Vector2(-20f, -20f));
+        menuHolder = UIBuilder.Panel(menuPanel.transform, "MenuHolder", new Vector2(0f, 0f), new Vector2(1f, 1f),
+            new Vector2(12f, 16f), new Vector2(-12f, -88f), new Color(0f, 0f, 0f, 0f)).transform;
 
         // Panel de muerte / legado
         deathPanel = UIBuilder.Panel(root, "Death", new Vector2(0f, 1f), new Vector2(1f, 1f),
@@ -92,21 +109,27 @@ public class GameManager : MonoBehaviour
 
         // Registro
         UIBuilder.Panel(root, "LogPanel", new Vector2(0f, 0f), new Vector2(1f, 0f),
-            new Vector2(16f, 96f), new Vector2(-16f, 300f), Card);
+            new Vector2(16f, 110f), new Vector2(-16f, 300f), Card);
         logText = UIBuilder.MakeText(root, "Log", "", 22, new Color(0.7f, 0.75f, 0.8f), TextAnchor.UpperLeft,
-            new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(32f, 106f), new Vector2(-32f, 292f));
+            new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(32f, 120f), new Vector2(-32f, 292f));
 
-        // Botones inferiores
-        UIBuilder.MakeButton(root, "BtnFamily", "Familia", 24, Btn,
-            new Vector2(0f, 0f), new Vector2(0f, 0f), new Vector2(16f, 16f), new Vector2(220f, 84f), ToggleFamily);
-        UIBuilder.MakeButton(root, "BtnSave", "Guardar", 24, Btn,
-            new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(-160f, 16f), new Vector2(-16f, 84f),
-            () => { if (data != null) { SaveSystem.Save(data); LogLine("Partida guardada."); } });
-        UIBuilder.MakeButton(root, "BtnNew", "Nueva vida", 24, Danger,
-            new Vector2(1f, 0f), new Vector2(1f, 0f), new Vector2(-390f, 16f), new Vector2(-176f, 84f), () => {
-                SaveSystem.Delete();
-                ShowCreate();
-            });
+        // Barra inferior de menús
+        string[] menuNames = { "Familia", "Ocupación", "Actividades", "Bienes", "Delitos" };
+        Action[] menuActions = {
+            () => OpenFamilyMenu(),
+            () => OpenOccupationMenu(),
+            () => OpenActivitiesMenu(),
+            () => OpenAssetsMenu(),
+            () => OpenCrimesMenu()
+        };
+        for (int i = 0; i < menuNames.Length; i++)
+        {
+            int idx = i;
+            UIBuilder.MakeButton(root, "Menu_" + menuNames[i], menuNames[i], 24, Btn,
+                new Vector2(0f, 0f), new Vector2(0f, 0f),
+                new Vector2(16f + idx * 139f, 16f), new Vector2(148f + idx * 139f, 100f),
+                () => menuActions[idx]());
+        }
 
         // Panel de creación de personaje
         createPanel = UIBuilder.Panel(root, "Create", new Vector2(0.5f, 0.5f), new Vector2(0.5f, 0.5f),
@@ -151,7 +174,6 @@ public class GameManager : MonoBehaviour
         data.character = ch;
         data.family = new FamilyTree();
         data.family.CreateDefaultParents(surname);
-        if (data.dynastyLegacy == 0) data.dynastyLegacy = 0;
 
         LogLine("Nace " + ch.name + " en " + ch.country + ". ¡Bienvenido a la vida!");
         SaveSystem.Save(data);
@@ -162,7 +184,7 @@ public class GameManager : MonoBehaviour
 
     private void BeginYear()
     {
-        if (data.character.alive == false) return;
+        if (!data.character.alive) return;
         state = State.Events;
         int howMany = rng.NextDouble() < 0.45 ? 2 : 1;
         yearEvents = EventDatabase.PickForYear(data.character, howMany, rng);
@@ -176,7 +198,7 @@ public class GameManager : MonoBehaviour
         state = State.Events;
         createPanel.SetActive(false);
         deathPanel.SetActive(false);
-        familyPanel.SetActive(false);
+        menuPanel.SetActive(false);
         cardPanel.SetActive(true);
         LifeEvent e = yearEvents[eventIndex];
         cardTitle.text = e.title;
@@ -188,11 +210,10 @@ public class GameManager : MonoBehaviour
         {
             Choice c = e.choices[i];
             float fromTop = (n - 1 - i) * (h + gap);
-            RectTransform b = UIBuilder.MakeButton(choicesHolder, "Choice" + i, c.text, 26, Btn,
+            UIBuilder.MakeButton(choicesHolder, "Choice" + i, c.text, 26, Btn,
                 new Vector2(0f, 1f), new Vector2(1f, 1f),
                 new Vector2(0f, -(fromTop + h)), new Vector2(0f, -fromTop),
-                () => OnChoice(e, c)).GetComponent<RectTransform>();
-            b.anchorMin = new Vector2(0f, 1f);
+                () => OnChoice(e, c));
         }
         UpdateHud();
     }
@@ -233,17 +254,18 @@ public class GameManager : MonoBehaviour
         }
         if (fx.addChild && data.family.Partner != null && data.family.Partner.alive)
         {
-            Person child = data.family.AddChild(ch.name.Split(' ').Length > 1 ? ch.name.Split(' ')[1] : NameGenerator.RandomSurname(rng));
+            Person child = data.family.AddChild(ch.name.Contains(" ") ? ch.name.Split(' ')[1] : NameGenerator.RandomSurname(rng));
             ch.SetFlag("hijos");
-            LogLine("¡Nace " + child.name + "! Ahora eres " + (ch.gender == "F" ? "madre" : "padre") + ".");
+            LogLine("¡Nace " + child.name + "!");
         }
         if (fx.deathChance > 0f && rng.NextDouble() < fx.deathChance)
         {
             Die("Murió trágicamente en un accidente inesperado.");
             return;
         }
-        LogLine("Año " + (ch.age) + ": " + c.text);
+        LogLine("Año " + ch.age + ": " + c.text);
         eventIndex++;
+        SaveSystem.Save(data);
         if (eventIndex < yearEvents.Count) ShowEvent();
         else ShowSummary();
     }
@@ -253,17 +275,18 @@ public class GameManager : MonoBehaviour
         state = State.Summary;
         createPanel.SetActive(false);
         deathPanel.SetActive(false);
-        familyPanel.SetActive(false);
+        menuPanel.SetActive(false);
         cardPanel.SetActive(true);
         Character ch = data.character;
         cardTitle.text = "Año de vida: " + ch.age;
-        string body =
+        string assetsLine = data.assets.Count > 0 ? string.Join(", ", data.assets.ToArray()) : "ninguno";
+        cardText.text =
             "Edad: " + ch.age + " años\n" +
-            "Dinero: $" + ch.money + (ch.job.Length > 0 ? "   (empleo: " + ch.job + ", $" + ch.salary + "/año)" : "") + "\n\n" +
+            "Dinero: $" + ch.money + (ch.job.Length > 0 ? "\nEmpleo: " + ch.job + " ($" + ch.salary + "/año)" : "") + "\n\n" +
             "Salud " + ch.health + "   Felicidad " + ch.happiness + "\n" +
             "Inteligencia " + ch.smarts + "   Aspecto " + ch.looks + "\n" +
+            "Bienes: " + assetsLine + "\n\n" +
             "Legado de la dinastía: " + data.dynastyLegacy;
-        cardText.text = body;
         UIBuilder.Clear(choicesHolder);
         UIBuilder.MakeButton(choicesHolder, "NextYear", "Avanzar un año", 30, Accent,
             new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(0f, -96f), new Vector2(0f, 0f), AdvanceYear);
@@ -277,24 +300,19 @@ public class GameManager : MonoBehaviour
         ch.age++;
         data.currentYear++;
 
-        // Envejecer a la familia (con posibles defunciones)
         foreach (string death in data.family.AgeOneYear(rng)) LogLine(death);
 
-        // Ingresos y deriva de stats
         if (ch.salary > 0) ch.money += ch.salary;
         if (ch.age > 40) ch.AddStat("health", -(ch.age - 40) / 10);
         if (ch.happiness > 85) ch.AddStat("happiness", -1);
         if (ch.happiness < 15) ch.AddStat("happiness", 1);
 
-        // Hitos escolares automáticos
         if (ch.age == 6) { ch.SetFlag("escuela"); LogLine("¡Empiezas la primaria!"); }
         if (ch.age == 12) { ch.SetFlag("secundaria"); }
         if (ch.age == 15) { ch.SetFlag("prepa"); }
         if (ch.age == 18) { ch.ClearFlag("escuela"); ch.ClearFlag("secundaria"); ch.ClearFlag("prepa"); LogLine("¡Te gradúas de la prepa!"); }
-        if (ch.age == 65 && ch.job.Length > 0) LogLine("Te jubilas de " + ch.job + ". El sueldo se reduce.");
-        if (ch.age == 65 && ch.job.Length > 0) ch.salary = ch.salary / 2;
+        if (ch.age == 65 && ch.job.Length > 0) { ch.salary = ch.salary / 2; LogLine("Te jubilas de " + ch.job + "."); }
 
-        // Probabilidad de muerte por edad y salud
         double deathChance = 0.0;
         if (ch.age > 55) deathChance += (ch.age - 55) * 0.008;
         if (ch.health < 15) deathChance += 0.08;
@@ -325,7 +343,7 @@ public class GameManager : MonoBehaviour
     {
         createPanel.SetActive(false);
         cardPanel.SetActive(false);
-        familyPanel.SetActive(false);
+        menuPanel.SetActive(false);
         deathPanel.SetActive(true);
         UIBuilder.Clear(deathHolder);
 
@@ -336,7 +354,6 @@ public class GameManager : MonoBehaviour
             26, Color.white, TextAnchor.UpperCenter,
             Vector2.zero, Vector2.one, new Vector2(10f, -170f), new Vector2(-10f, -120f));
 
-        // Herederos adultos
         int y = -260;
         List<Person> heirs = data.family.AliveChildren.FindAll(c => c.age >= 18);
         bool any = false;
@@ -375,11 +392,9 @@ public class GameManager : MonoBehaviour
         ch.happiness = rng.Next(60, 85);
         ch.smarts = Math.Max(35, Math.Min(90, old.smarts + rng.Next(-15, 16)));
         ch.looks = rng.Next(30, 80);
-        ch.money = old.money / 2;                      // herencia
+        ch.money = old.money / 2;
         ch.generation = old.generation + 1;
-        ch.SetFlag("hijos"); if (old.HasFlag("pareja")) ch.SetFlag("pareja");
 
-        // La familia se reordena: el difunto entra como ancestro, los hermanos quedan
         FamilyTree f = new FamilyTree();
         f.members.Add(new Person(old.name, old.gender == "F" ? "madre" : "padre", old.gender, old.age, 90) { alive = false });
         Person oldPartner = data.family.Partner;
@@ -398,37 +413,387 @@ public class GameManager : MonoBehaviour
         BeginYear();
     }
 
-    // ----------------------------------------------------------------- paneles
+    // ----------------------------------------------------------------- menús estilo BitLife
 
-    private void ToggleFamily()
+    private void OpenMenu(string title, List<MenuRow> rows)
     {
-        if (state == State.Create) return;
-        bool show = !familyPanel.activeSelf;
-        if (show) RefreshFamily();
-        familyPanel.SetActive(show);
-        cardPanel.SetActive(!show && state != State.Death);
-        deathPanel.SetActive(!show && state == State.Death);
+        if (state == State.Create || state == State.Death) return;
+        if (state != State.Menu) menuFromEvents = (state == State.Events);
+        state = State.Menu;
+        createPanel.SetActive(false);
+        deathPanel.SetActive(false);
+        cardPanel.SetActive(false);
+        menuPanel.SetActive(true);
+        menuTitle.text = title;
+        UIBuilder.Clear(menuHolder);
+
+        float y = 0f;
+        int shown = 0;
+        foreach (MenuRow row in rows)
+        {
+            if (shown >= 9) break;
+            MenuRow captured = row;
+            UIBuilder.MakeButton(menuHolder, "Row" + shown, captured.label, 22,
+                captured.enabled ? Btn : BtnOff,
+                new Vector2(0f, 1f), new Vector2(1f, 1f),
+                new Vector2(8f, -(y + 54f)), new Vector2(-8f, -y),
+                captured.enabled ? (UnityEngine.Events.UnityAction)(() => { captured.onClick(); }) : null);
+            y += 62f;
+            shown++;
+        }
+        UIBuilder.MakeButton(menuHolder, "Back", "Volver", 22, Danger,
+            new Vector2(0f, 1f), new Vector2(1f, 1f),
+            new Vector2(8f, -(y + 54f)), new Vector2(-8f, -y), CloseMenu);
+        UpdateHud();
     }
 
-    private void RefreshFamily()
+    private void CloseMenu()
     {
-        UIBuilder.Clear(familyHolder);
-        int y = 0;
+        menuPanel.SetActive(false);
+        if (menuFromEvents && eventIndex < yearEvents.Count) ShowEvent();
+        else ShowSummary();
+    }
+
+    // ---- familia y relaciones
+
+    private void OpenFamilyMenu()
+    {
+        Character ch = data.character;
+        List<MenuRow> rows = new List<MenuRow>();
+
+        if (ch.age >= 18 && data.family.Partner == null)
+            rows.Add(new MenuRow("Buscar pareja (app de citas)", DoDating));
+        if (ch.age >= 6 && CountFriends() < 3)
+            rows.Add(new MenuRow("Buscar un amigo", DoMakeFriend));
+
         foreach (Person p in data.family.members)
         {
-            string line = p.name + "  ·  " + p.relation + ", " + p.age + " años" +
-                          (p.alive ? "  ·  afecto " + p.affection : "  ·  †");
-            UIBuilder.MakeText(familyHolder, "F_" + p.name + y, line, 25,
-                p.alive ? Color.white : new Color(0.6f, 0.6f, 0.6f),
-                TextAnchor.MiddleLeft, new Vector2(0f, 1f), new Vector2(1f, 1f),
-                new Vector2(8f, y - 36), new Vector2(-8f, y));
-            y -= 40;
+            Person captured = p;
+            string label = p.name + "  ·  " + p.relation + ", " + p.age + " años" +
+                           (p.alive ? "  ·  afecto " + p.affection : "  ·  †");
+            rows.Add(new MenuRow(label, () => OpenMemberMenu(captured)));
         }
-        if (data.family.members.Count == 0)
-            UIBuilder.MakeText(familyHolder, "Empty", "Todavía no conoces a nadie.", 24,
-                new Color(0.7f, 0.7f, 0.75f), TextAnchor.MiddleLeft,
-                new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(8f, -30), new Vector2(-8f, 0));
+        OpenMenu("Familia y relaciones", rows);
     }
+
+    private void OpenMemberMenu(Person p)
+    {
+        List<MenuRow> rows = new List<MenuRow>();
+        rows.Add(new MenuRow("Conversar (afecto +3)", () => TalkTo(p, 3, "Pasaste un rato agradable con " + p.name + ".")));
+        rows.Add(new MenuRow("Dar un cumplido (afecto +4)", () => TalkTo(p, 4, p.name + " agradeció tu cumplido.")));
+        rows.Add(new MenuRow("Regalar $2,000 (afecto +8)", () => GiftTo(p), data.character.money >= 2000));
+        rows.Add(new MenuRow("Pedir dinero", () => AskMoney(p), p.alive && p.affection >= 55));
+        rows.Add(new MenuRow("Insultar (afecto -12)", () => TalkTo(p, -12, "Le gritaste a " + p.name + ". Se molestó.")));
+        OpenMenu(p.name, rows);
+    }
+
+    private void TalkTo(Person p, int delta, string message)
+    {
+        p.affection = Math.Max(0, Math.Min(100, p.affection + delta));
+        data.character.AddStat("happiness", delta > 0 ? 1 : -1);
+        LogLine(message);
+        SaveSystem.Save(data);
+        CloseMenu();
+    }
+
+    private void GiftTo(Person p)
+    {
+        data.character.money -= 2000;
+        p.affection = Math.Max(0, Math.Min(100, p.affection + 8));
+        LogLine("Le regalaste algo especial a " + p.name + ". Afecto +8.");
+        SaveSystem.Save(data);
+        CloseMenu();
+    }
+
+    private void AskMoney(Person p)
+    {
+        long amount = 3000 + rng.Next(0, 3000);
+        data.character.money += amount;
+        p.affection = Math.Max(0, p.affection - 8);
+        LogLine(p.name + " te prestó $" + amount + ".");
+        SaveSystem.Save(data);
+        CloseMenu();
+    }
+
+    private void DoDating()
+    {
+        Character ch = data.character;
+        double chance = 0.15 + ch.looks * 0.007;
+        if (rng.NextDouble() < chance && data.family.Partner == null)
+        {
+            Person p = data.family.AddPartner(NameGenerator.RandomSurname(rng), ch.age);
+            ch.SetFlag("pareja");
+            LogLine("¡Genial! " + p.name + " aceptó salir contigo.");
+        }
+        else LogLine("Nadie respondió tus mensajes... por ahora.");
+        SaveSystem.Save(data);
+        CloseMenu();
+    }
+
+    private void DoMakeFriend()
+    {
+        Character ch = data.character;
+        if (rng.NextDouble() < 0.4 + ch.happiness * 0.004)
+        {
+            bool male = rng.NextDouble() < 0.5;
+            string n = (male ? NameGenerator.RandomMale(rng) : NameGenerator.RandomFemale(rng)) +
+                       " " + NameGenerator.RandomSurname(rng);
+            data.family.members.Add(new Person(n, male ? "amigo" : "amiga", male ? "M" : "F",
+                Math.Max(6, ch.age + rng.Next(-4, 5)), 55));
+            LogLine("Hiciste una nueva amistad: " + n + ".");
+        }
+        else LogLine("Nadie pareció interesado en platicar contigo hoy.");
+        SaveSystem.Save(data);
+        CloseMenu();
+    }
+
+    private int CountFriends()
+    {
+        int n = 0;
+        foreach (Person p in data.family.members)
+            if ((p.relation == "amigo" || p.relation == "amiga") && p.alive) n++;
+        return n;
+    }
+
+    // ---- ocupación
+
+    private void OpenOccupationMenu()
+    {
+        Character ch = data.character;
+        List<MenuRow> rows = new List<MenuRow>();
+
+        if (ch.job.Length > 0)
+        {
+            rows.Add(new MenuRow("Pedir aumento (sueldo: $" + ch.salary + ")", DoAskRaise));
+            rows.Add(new MenuRow("Trabajar duro (+posible ascenso)", DoWorkHard));
+            rows.Add(new MenuRow("Renunciar a " + ch.job, DoQuitJob));
+        }
+
+        if (ch.age >= 18 && !ch.HasFlag("universidad") && !ch.HasFlag("titulado"))
+            rows.Add(new MenuRow("Inscribirse a la universidad (-$50,000)", DoEnrollUniversity, ch.money >= 50000));
+
+        if (ch.HasFlag("universidad") && !ch.HasFlag("titulado"))
+            rows.Add(new MenuRow("Estudiar para el examen (inteligencia +3)", DoStudy));
+
+        bool wantPartTime = ch.age < 18;
+        List<JobDef> eligible = new List<JobDef>();
+        foreach (JobDef j in Catalog.Jobs)
+        {
+            if (ch.age < j.minAge) continue;
+            if (!string.IsNullOrEmpty(j.reqFlag) && !ch.HasFlag(j.reqFlag)) continue;
+            if (j.partTime != wantPartTime) continue;
+            if (ch.job == j.name) continue;
+            eligible.Add(j);
+        }
+        eligible.Sort((a, b) => b.salary.CompareTo(a.salary));
+        int shown = 0;
+        foreach (JobDef j in eligible)
+        {
+            if (shown >= 5) break;
+            JobDef captured = j;
+            rows.Add(new MenuRow("Solicitar: " + j.name + " ($" + j.salary + "/año)", () => DoApplyJob(captured)));
+            shown++;
+        }
+        if (rows.Count == 0)
+            rows.Add(new MenuRow("No hay nada disponible a tu edad todavía.", null, false));
+        OpenMenu("Ocupación", rows);
+    }
+
+    private void DoApplyJob(JobDef j)
+    {
+        Character ch = data.character;
+        double chance = Math.Max(0.15, Math.Min(0.95, 0.25 + (ch.smarts - j.reqSmarts) * 0.01));
+        if (rng.NextDouble() < chance)
+        {
+            ch.job = j.name;
+            ch.salary = j.salary;
+            ch.SetFlag("empleo");
+            ch.AddStat("happiness", 5);
+            LogLine("¡Te contrataron como " + j.name + "! Sueldo: $" + j.salary + "/año.");
+        }
+        else
+        {
+            LogLine("No quedaste en el puesto de " + j.name + ". Suerte la próxima.");
+        }
+        SaveSystem.Save(data);
+        CloseMenu();
+    }
+
+    private void DoAskRaise()
+    {
+        Character ch = data.character;
+        double chance = Math.Max(0.10, Math.Min(0.85, 0.2 + ch.smarts * 0.006));
+        if (rng.NextDouble() < chance)
+        {
+            int raise = (int)(ch.salary * 0.12);
+            ch.salary += raise;
+            LogLine("¡Tu jefe te dio un aumento de $" + raise + "!");
+        }
+        else LogLine("Tu jefe dijo que 'ahora no es buen momento'.");
+        SaveSystem.Save(data);
+        CloseMenu();
+    }
+
+    private void DoWorkHard()
+    {
+        Character ch = data.character;
+        ch.AddStat("happiness", -2);
+        if (rng.NextDouble() < 0.3 + ch.smarts * 0.004)
+        {
+            int raise = (int)(ch.salary * 0.20);
+            ch.salary += raise;
+            LogLine("Tu esfuerzo dio frutos: te promovieron. Sueldo ahora $" + ch.salary + "/año.");
+        }
+        else LogLine("Trabajaste hasta tarde. Estás exhausto pero tu jefe te notó.");
+        SaveSystem.Save(data);
+        CloseMenu();
+    }
+
+    private void DoQuitJob()
+    {
+        Character ch = data.character;
+        LogLine("Renunciaste a tu puesto de " + ch.job + ".");
+        ch.job = "";
+        ch.salary = 0;
+        ch.AddStat("happiness", 2);
+        SaveSystem.Save(data);
+        CloseMenu();
+    }
+
+    private void DoEnrollUniversity()
+    {
+        Character ch = data.character;
+        ch.money -= 50000;
+        ch.SetFlag("universidad");
+        ch.AddStat("smarts", 4);
+        LogLine("¡Entraste a la universidad! -$50,000 de inscripción.");
+        SaveSystem.Save(data);
+        CloseMenu();
+    }
+
+    private void DoStudy()
+    {
+        Character ch = data.character;
+        ch.AddStat("smarts", 3);
+        ch.AddStat("happiness", -1);
+        if (ch.age >= 22 && ch.smarts >= 65 && rng.NextDouble() < 0.4)
+        {
+            ch.SetFlag("titulado");
+            LogLine("¡Te titulaste de la universidad!");
+        }
+        else LogLine("Estudiaste toda la tarde. Inteligencia +3.");
+        SaveSystem.Save(data);
+        CloseMenu();
+    }
+
+    // ---- actividades
+
+    private void OpenActivitiesMenu()
+    {
+        Character ch = data.character;
+        List<MenuRow> rows = new List<MenuRow>();
+        foreach (ActivityDef a in Catalog.Activities)
+        {
+            if (ch.age < a.minAge) continue;
+            ActivityDef captured = a;
+            string label = a.name + (a.cost > 0 ? "  ·  -$" + a.cost : "  ·  gratis");
+            rows.Add(new MenuRow(label, () => DoActivity(captured), ch.money >= a.cost));
+        }
+        if (rows.Count == 0) rows.Add(new MenuRow("Todavía eres muy pequeño para esto.", null, false));
+        OpenMenu("Actividades", rows);
+    }
+
+    private void DoActivity(ActivityDef a)
+    {
+        Character ch = data.character;
+        ch.money -= a.cost;
+        ch.AddStat("health", a.health);
+        ch.AddStat("happiness", a.happiness);
+        ch.AddStat("smarts", a.smarts);
+        ch.AddStat("looks", a.looks);
+        LogLine("Actividad: " + a.name + ".");
+        SaveSystem.Save(data);
+        CloseMenu();
+    }
+
+    // ---- bienes
+
+    private void OpenAssetsMenu()
+    {
+        Character ch = data.character;
+        List<MenuRow> rows = new List<MenuRow>();
+        foreach (AssetDef a in Catalog.Assets)
+        {
+            AssetDef captured = a;
+            if (data.assets.Contains(a.name))
+                rows.Add(new MenuRow("Vender: " + a.name + " (+$" + a.price / 2 + ")", () => DoSellAsset(captured)));
+            else
+                rows.Add(new MenuRow("Comprar: " + a.name + "  ·  -$" + a.price,
+                    () => DoBuyAsset(captured), ch.money >= a.price));
+        }
+        OpenMenu("Bienes", rows);
+    }
+
+    private void DoBuyAsset(AssetDef a)
+    {
+        Character ch = data.character;
+        ch.money -= a.price;
+        ch.AddStat("happiness", a.happiness);
+        data.assets.Add(a.name);
+        LogLine("¡Compraste " + a.name + " por $" + a.price + "!");
+        SaveSystem.Save(data);
+        CloseMenu();
+    }
+
+    private void DoSellAsset(AssetDef a)
+    {
+        Character ch = data.character;
+        ch.money += a.price / 2;
+        ch.AddStat("happiness", -3);
+        data.assets.Remove(a.name);
+        LogLine("Vendiste " + a.name + " por $" + a.price / 2 + ".");
+        SaveSystem.Save(data);
+        CloseMenu();
+    }
+
+    // ---- delitos
+
+    private void OpenCrimesMenu()
+    {
+        Character ch = data.character;
+        List<MenuRow> rows = new List<MenuRow>();
+        foreach (CrimeDef c in Catalog.Crimes)
+        {
+            if (ch.age < c.minAge) continue;
+            CrimeDef captured = c;
+            rows.Add(new MenuRow(captured.name, () => DoCrime(captured)));
+        }
+        if (rows.Count == 0) rows.Add(new MenuRow("Todavía no tienes edad para estas travesuras.", null, false));
+        OpenMenu("Delitos", rows);
+    }
+
+    private void DoCrime(CrimeDef c)
+    {
+        Character ch = data.character;
+        double chance = Math.Max(0.10, Math.Min(0.85, 0.25 + (ch.smarts - c.reqSmarts) * 0.008));
+        if (rng.NextDouble() < chance)
+        {
+            ch.money += c.reward;
+            ch.AddStat("happiness", 3);
+            LogLine(c.successLog + " Ganaste $" + c.reward + ".");
+        }
+        else
+        {
+            ch.money -= c.fine;
+            ch.AddStat("happiness", -c.happinessHit);
+            ch.SetFlag("antecedentes");
+            LogLine(c.caughtLog + " Perdiste $" + c.fine + ".");
+        }
+        SaveSystem.Save(data);
+        CloseMenu();
+    }
+
+    // ----------------------------------------------------------------- crear y hud
 
     private void ShowCreate()
     {
@@ -436,13 +801,11 @@ public class GameManager : MonoBehaviour
         data = null;
         cardPanel.SetActive(false);
         deathPanel.SetActive(false);
-        familyPanel.SetActive(false);
+        menuPanel.SetActive(false);
         createPanel.SetActive(true);
         if (nameInput != null) nameInput.text = "";
         UpdateHud();
     }
-
-    // ----------------------------------------------------------------- hud y log
 
     private void UpdateHud()
     {
