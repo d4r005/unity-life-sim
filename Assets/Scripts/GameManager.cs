@@ -439,6 +439,8 @@ public class GameManager : MonoBehaviour
 
         foreach (string death in data.family.AgeOneYear(rng)) LogLine(death);
 
+        TryFamilyMarriages();
+
         if (ch.salary > 0) ch.money += ch.salary;
         if (ch.age > 40) ch.AddStat("health", -(ch.age - 40) / 10);
         if (ch.happiness > 85) ch.AddStat("happiness", -1);
@@ -538,18 +540,26 @@ public class GameManager : MonoBehaviour
         ch.generation = old.generation + 1;
         ch.portraitSeed = rng.Next(1, 1000000);
 
-        FamilyTree f = new FamilyTree();
-        f.members.Add(new Person(old.name, old.gender == "F" ? "madre" : "padre", old.gender, old.age, 90) { alive = false, portraitSeed = old.portraitSeed });
-        Person oldPartner = data.family.Partner;
-        if (oldPartner != null)
-            f.members.Add(new Person(oldPartner.name, oldPartner.gender == "F" ? "madre" : "padre",
-                oldPartner.gender, oldPartner.age, oldPartner.affection) { portraitSeed = oldPartner.portraitSeed });
-        foreach (Person c in data.family.Children)
-            if (c.alive && c.name != heir.name)
-                f.members.Add(new Person(c.name, c.relation, c.gender, c.age, c.affection) { portraitSeed = c.portraitSeed });
+        // El arbol persiste: se reetiqueta todo desde la perspectiva del heredero
+        List<Person> members = data.family.members;
+        foreach (Person p in members)
+        {
+            if (p.relation == "pareja")
+                p.relation = (p.gender == "F") ? "madre" : "padre";          // tu otro padre/madre
+            else if ((p.relation == "yerno" || p.relation == "nuera") && p.partnerOf == heir.name)
+                p.relation = "pareja";                                        // tu esposo/a
+            else if (p.relation == "padre" || p.relation == "madre")
+                p.relation = (p.gender == "F") ? "abuela" : "abuelo";        // abuelos
+            else if (p.relation == "hermano" || p.relation == "hermana")
+                p.relation = (p.gender == "F") ? "tía" : "tío";   // tios
+            else if (p.relation == "hijo" || p.relation == "hija")
+                p.relation = (p.gender == "F") ? "hermana" : "hermano";      // hermanos
+        }
+        members.RemoveAll(mp => ReferenceEquals(mp, heir));
+        members.Add(new Person(old.name, old.gender == "F" ? "madre" : "padre", old.gender, old.age, 100)
+            { alive = false, portraitSeed = old.portraitSeed });
 
         data.character = ch;
-        data.family = f;
         EventDatabase.ResetSeen();
         LogLine("La historia continúa con " + ch.name + ", generación " + ch.generation + ".");
         SaveSystem.Save(data);
@@ -605,99 +615,202 @@ public class GameManager : MonoBehaviour
 
     private static Color TreeLineCol => Theme.TreeLine;
 
+    private class TreeUnit
+    {
+        public Person person;
+        public bool isYou;
+        public Person inlaw;
+        public float cx, inlawCx, width;
+    }
+
     private void OpenTreeMenu()
     {
         if (state == State.Create || state == State.Death || data == null) return;
         if (state != State.Menu) menuFromEvents = (state == State.Events);
         state = State.Menu;
-        createPanel.SetActive(false); cardPanel.SetActive(false); deathPanel.SetActive(false);
+        createPanel.SetActive(false);
+        cardPanel.SetActive(false);
+        deathPanel.SetActive(false);
         menuPanel.SetActive(true);
         UIBuilder.Clear(menuHolder);
-
         Character ch = data.character;
         menuTitle.text = "Arbol familiar";
 
-        Transform t = menuHolder;
-
-        List<Person> parents = new List<Person>();
-        List<Person> siblings = new List<Person>();
-        List<Person> children = new List<Person>();
+        List<Person> abuelos = new List<Person>(), padres = new List<Person>(), tios = new List<Person>(),
+                     hermanos = new List<Person>(), hijos = new List<Person>();
+        Person pareja = null;
         foreach (Person p in data.family.members)
         {
-            if (p.relation == "padre" || p.relation == "madre") parents.Add(p);
-            else if (p.relation == "hermano" || p.relation == "hermana") siblings.Add(p);
-            else if (p.relation == "hijo" || p.relation == "hija") children.Add(p);
-        }
-        Person partner = data.family.Partner;
-
-        float youCx = 264f, partCx = 404f;
-        float midX = partner != null ? (youCx + partCx) / 2f : youCx;
-
-        // lineas de conexion (se dibujan primero, quedan detras)
-        if (parents.Count > 0)
-        {
-            float px0 = 264f - (parents.Count - 1) * 45f, px1 = 264f + (parents.Count - 1) * 45f;
-            float left = siblings.Count > 0 ? Math.Max(44f, youCx - 120f * siblings.Count) : px0;
-            TreeLine(t, left, 98f, Math.Max(px1, 324f), 98f);
-            TreeLine(t, midX, 98f, midX, 106f);
-        }
-        if (partner != null) TreeLine(t, youCx + 24f, 130f, partCx - 24f, 130f);
-        if (children.Count > 0)
-        {
-            float c0 = midX - (children.Count - 1) * 50f, c1 = midX + (children.Count - 1) * 50f;
-            TreeLine(t, midX, 154f, midX, 198f);
-            TreeLine(t, c0, 198f, c1, 198f);
+            switch (p.relation)
+            {
+                case "abuelo": case "abuela": abuelos.Add(p); break;
+                case "padre": case "madre": padres.Add(p); break;
+                case "tío": case "tía": tios.Add(p); break;
+                case "hermano": case "hermana": hermanos.Add(p); break;
+                case "hijo": case "hija": hijos.Add(p); break;
+                case "pareja": pareja = p; break;
+            }
         }
 
-        // padres
-        for (int i = 0; i < parents.Count; i++)
+        List<TreeUnit> row1 = BuildUnits(abuelos, 4);
+        List<TreeUnit> row2 = BuildUnits(padres, 2);
+        row2.AddRange(BuildUnits(tios, 3));
+        List<TreeUnit> row3 = BuildUnits(hermanos, 3);
+        TreeUnit you = new TreeUnit { person = null, isYou = true, inlaw = pareja,
+            width = 48f + (pareja != null ? 64f : 0f) };
+        row3.Add(you);
+        List<TreeUnit> row4 = BuildUnits(hijos, 5);
+
+        LayoutRow(row1);
+        LayoutRow(row2);
+        LayoutRow(row3);
+        LayoutRow(row4);
+
+        Transform t = menuHolder;
+
+        // ---- lineas de conexion (se dibujan detras de los nodos)
+        if (row1.Count > 0)
         {
-            Person p = parents[i];
-            float cx = 264f + (i - (parents.Count - 1) / 2f) * 90f;
-            Person captured = p;
-            TreeNode(t, cx, 8f, p.portraitSeed, ShortName(p.name),
-                p.relation + ", " + p.age + (p.alive ? "" : "  †"), !p.alive,
-                () => OpenMemberMenu(captured));
+            TreeLine(t, row1[0].cx, 64f, row1[row1.Count - 1].cx, 64f);
+            TreeLine(t, 344f, 64f, 344f, 72f);
+        }
+        if (row2.Count > 0)
+        {
+            TreeLine(t, row2[0].cx, 136f, row2[row2.Count - 1].cx, 136f);
+            if (row1.Count > 0)
+                foreach (TreeUnit u in row2)
+                    if (u.person.relation == "tío" || u.person.relation == "tía")
+                        TreeLine(t, u.cx, 64f, u.cx, 72f);
+        }
+        float midX = (you.cx + (pareja != null ? you.inlawCx : you.cx)) / 2f;
+        TreeLine(t, midX, 136f, midX, 144f);
+        if (pareja != null) TreeLine(t, you.cx + 26f, 166f, you.inlawCx - 22f, 166f);
+        foreach (TreeUnit u in row3)
+            if (!u.isYou && u.inlaw != null) TreeLine(t, u.cx + 22f, 166f, u.inlawCx - 22f, 166f);
+        if (row4.Count > 0)
+        {
+            TreeLine(t, midX, 166f, midX, 212f);
+            float c0 = Math.Min(row4[0].cx, row4[0].inlaw != null ? row4[0].inlawCx : row4[0].cx);
+            TreeUnit lastU = row4[row4.Count - 1];
+            float c1 = Math.Max(lastU.cx, lastU.inlaw != null ? lastU.inlawCx : lastU.cx);
+            TreeLine(t, c0, 212f, c1, 212f);
+            foreach (TreeUnit u in row4)
+            {
+                TreeLine(t, u.cx, 212f, u.cx, 220f);
+                if (u.inlaw != null) TreeLine(t, u.cx + 22f, 242f, u.inlawCx - 22f, 242f);
+            }
         }
 
-        // hermanos, tu y pareja
-        for (int i = 0; i < siblings.Count && i < 2; i++)
-        {
-            Person p = siblings[i];
-            float cx = Math.Max(44f, youCx - 120f * (i + 1));
-            Person captured = p;
-            TreeNode(t, cx, 106f, p.portraitSeed, ShortName(p.name),
-                p.relation + ", " + p.age, !p.alive, () => OpenMemberMenu(captured));
-        }
-        TreeNode(t, youCx, 106f, ch.portraitSeed, ShortName(ch.name), "TU", false, null);
-        if (partner != null)
-        {
-            Person captured = partner;
-            TreeNode(t, partCx, 106f, partner.portraitSeed, ShortName(partner.name),
-                partner.relation + ", " + partner.age, !partner.alive, () => OpenMemberMenu(captured));
-        }
+        // ---- nodos
+        foreach (TreeUnit u in row1) DrawUnit(t, u, 0f, 44f);
+        foreach (TreeUnit u in row2) DrawUnit(t, u, 72f, 44f);
+        foreach (TreeUnit u in row3) DrawUnit(t, u, 144f, u.isYou ? 48f : 44f);
+        foreach (TreeUnit u in row4) DrawUnit(t, u, 220f, 44f);
 
-        // hijos
-        for (int i = 0; i < children.Count && i < 6; i++)
-        {
-            Person p = children[i];
-            float cx = midX + (i - (Math.Min(children.Count, 6) - 1) / 2f) * 100f;
-            Person captured = p;
-            TreeNode(t, cx, 206f, p.portraitSeed, ShortName(p.name),
-                p.relation + ", " + p.age, !p.alive, () => OpenMemberMenu(captured));
-        }
-
-        // botones laterales
-        UIBuilder.MakeButton(t, "BtnBack", "Volver", 17, new Color(0.99f, 0.98f, 0.94f),
-            new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(540f, -52f), new Vector2(676f, -8f), CloseMenu);
-        if (ch.age >= 18 && partner == null)
-            UIBuilder.MakeButton(t, "BtnDate", "Buscar pareja", 16, Accent,
-                new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(540f, -150f), new Vector2(676f, -106f), DoDating);
+        // ---- botones laterales
+        UIBuilder.MakeButton(t, "BtnVolver", "Volver", 20, Cream,
+            new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(520f, -44f), new Vector2(676f, 0f), CloseMenu);
+        if (ch.age >= 18 && pareja == null)
+            UIBuilder.MakeButton(t, "BtnDate", "Buscar pareja", 18, Accent,
+                new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(520f, -118f), new Vector2(676f, -72f), DoDating);
         if (ch.age >= 6 && CountFriends() < 3)
-            UIBuilder.MakeButton(t, "BtnFriend", "Hacer amigo", 16, new Color(0.99f, 0.98f, 0.94f),
-                new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(540f, -202f), new Vector2(676f, -158f), DoMakeFriend);
-
+            UIBuilder.MakeButton(t, "BtnFriend", "Hacer amigo", 18, Cream,
+                new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(520f, -192f), new Vector2(676f, -146f), DoMakeFriend);
         UpdateHud();
+    }
+
+    private List<TreeUnit> BuildUnits(List<Person> people, int cap)
+    {
+        List<TreeUnit> units = new List<TreeUnit>();
+        foreach (Person p in people)
+        {
+            if (units.Count >= cap) break;
+            TreeUnit u = new TreeUnit();
+            u.person = p;
+            u.inlaw = FindInlaw(p);
+            u.width = 44f + (u.inlaw != null ? 64f : 0f);
+            units.Add(u);
+        }
+        return units;
+    }
+
+    private Person FindInlaw(Person p)
+    {
+        foreach (Person q in data.family.members)
+            if (q.partnerOf == p.name &&
+                (q.relation == "yerno" || q.relation == "nuera" || q.relation == "cuñado" || q.relation == "cuñada"))
+                return q;
+        return null;
+    }
+
+    private void LayoutRow(List<TreeUnit> units)
+    {
+        if (units.Count == 0) return;
+        float total = 0f;
+        foreach (TreeUnit u in units) total += u.width;
+        total += 18f * (units.Count - 1);
+        float x = 344f - total / 2f;
+        foreach (TreeUnit u in units)
+        {
+            float half = u.isYou ? 24f : 22f;
+            u.cx = x + half;
+            u.inlawCx = u.inlaw != null ? x + u.width - half : u.cx;
+            x += u.width + 18f;
+        }
+    }
+
+    private void DrawUnit(Transform t, TreeUnit u, float topY, float size)
+    {
+        if (u.isYou)
+        {
+            Character ch = data.character;
+            TreeNode(t, u.cx, topY, size, ch.portraitSeed, ShortName(ch.name), "TU · " + ch.age + " años", false, null);
+            if (u.inlaw != null)
+                TreeNode(t, u.inlawCx, topY, size, u.inlaw.portraitSeed, ShortName(u.inlaw.name),
+                    u.inlaw.relation + ", " + u.inlaw.age + (u.inlaw.alive ? "" : " †"), !u.inlaw.alive,
+                    () => OpenMemberMenu(u.inlaw));
+            return;
+        }
+        TreeNode(t, u.cx, topY, size, u.person.portraitSeed, ShortName(u.person.name),
+            u.person.relation + ", " + u.person.age + (u.person.alive ? "" : " †"), !u.person.alive,
+            () => OpenMemberMenu(u.person));
+        if (u.inlaw != null)
+            TreeNode(t, u.inlawCx, topY, size, u.inlaw.portraitSeed, ShortName(u.inlaw.name),
+                u.inlaw.relation + ", " + u.inlaw.age + (u.inlaw.alive ? "" : " †"), !u.inlaw.alive,
+                () => OpenMemberMenu(u.inlaw));
+    }
+
+    private void TryFamilyMarriages()
+    {
+        List<Person> members = data.family.members;
+        for (int i = 0; i < members.Count; i++)
+        {
+            Person p = members[i];
+            if (!p.alive || p.age < 21 || p.age > 70) continue;
+            bool isChild = p.relation == "hijo" || p.relation == "hija";
+            bool isSibling = p.relation == "hermano" || p.relation == "hermana";
+            if (!isChild && !isSibling) continue;
+            if (HasSpouse(p)) continue;
+            double chance = isChild ? 0.08 : 0.05;
+            if (rng.NextDouble() < chance)
+            {
+                bool male = rng.NextDouble() < 0.5;
+                string rel = isChild ? (male ? "yerno" : "nuera") : (male ? "cuñado" : "cuñada");
+                string n = NameGenerator.RandomName(rng, male ? "M" : "F") + " " + NameGenerator.RandomSurname(rng);
+                members.Add(new Person(n, rel, male ? "M" : "F", Math.Max(19, p.age + rng.Next(-4, 5)), 60)
+                    { portraitSeed = rng.Next(), partnerOf = p.name });
+                LogLine("¡Tu " + p.relation + " " + p.name + " se casó con " + n + "!");
+            }
+        }
+    }
+
+    private bool HasSpouse(Person p)
+    {
+        foreach (Person q in data.family.members)
+            if (q.partnerOf == p.name &&
+                (q.relation == "yerno" || q.relation == "nuera" || q.relation == "cuñado" || q.relation == "cuñada"))
+                return true;
+        return false;
     }
 
     private void TreeLine(Transform parent, float x1, float y1, float x2, float y2)
@@ -708,14 +821,14 @@ public class GameManager : MonoBehaviour
             new Vector2(x, -(y + h)), new Vector2(x + w, -y), TreeLineCol);
     }
 
-    private void TreeNode(Transform parent, float cx, float topY, int seed, string name, string sub, bool dead, Action onClick)
+    private void TreeNode(Transform parent, float cx, float topY, float size, int seed, string name, string sub, bool dead, Action onClick)
     {
         GameObject node = new GameObject("Node", typeof(Image));
         node.transform.SetParent(parent, false);
         RectTransform rt = node.GetComponent<RectTransform>();
         rt.anchorMin = new Vector2(0f, 1f); rt.anchorMax = new Vector2(0f, 1f);
-        rt.offsetMin = new Vector2(cx - 24f, -topY - 48f);
-        rt.offsetMax = new Vector2(cx + 24f, -topY);
+        rt.offsetMin = new Vector2(cx - size / 2f, -topY - size);
+        rt.offsetMax = new Vector2(cx + size / 2f, -topY);
         Image img = node.GetComponent<Image>();
         img.sprite = UIBuilder.Avatar(seed);
         if (onClick != null)
@@ -734,9 +847,9 @@ public class GameManager : MonoBehaviour
             veilGO.GetComponent<Image>().color = new Color(0.95f, 0.95f, 0.95f, 0.55f);
         }
         UIBuilder.MakeText(parent, "NodeName", name, 15, Ink, TextAnchor.UpperCenter,
-            new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(cx - 60f, -topY - 66f), new Vector2(cx + 60f, -topY - 48f), FontStyle.Bold);
+            new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(cx - 62f, -topY - size - 20f), new Vector2(cx + 62f, -topY - size), FontStyle.Bold);
         UIBuilder.MakeText(parent, "NodeSub", sub, 12, Sub, TextAnchor.UpperCenter,
-            new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(cx - 60f, -topY - 82f), new Vector2(cx + 60f, -topY - 66f));
+            new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(cx - 62f, -topY - size - 36f), new Vector2(cx + 62f, -topY - size - 20f));
     }
 
     private static string ShortName(string fullName)

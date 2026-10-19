@@ -15,6 +15,7 @@ public class Person
     public bool alive = true;
     public int affection = 50;   // 0..100
     public int portraitSeed = 0; // semilla del retrato cartoon
+    public string partnerOf = ""; // nombre de la persona con la que está casado/a
 
     public Person() { }
 
