@@ -143,44 +143,44 @@ public class GameManager : MonoBehaviour
             FontStyle.Bold);
 
         // ---- Tarjeta central (eventos y resúmenes)
-        cardPanel = UIBuilder.Panel(root, "Card", new Vector2(0f, 1f), new Vector2(1f, 1f),
-            new Vector2(16f, -872f), new Vector2(-16f, -260f), Paper).gameObject;
+        cardPanel = UIBuilder.Panel(root, "Card", new Vector2(0f, 0f), new Vector2(1f, 1f),
+            new Vector2(16f, 444f), new Vector2(-16f, -260f), Paper).gameObject;
         cardTitle = UIBuilder.MakeText(cardPanel.transform, "Title", "", 30, Ink, TextAnchor.UpperCenter,
             Vector2.zero, Vector2.one, new Vector2(32f, -336f), new Vector2(-32f, -276f), FontStyle.Bold);
         cardText = UIBuilder.MakeText(cardPanel.transform, "Body", "", 23, Ink, TextAnchor.UpperLeft,
-            Vector2.zero, Vector2.one, new Vector2(36f, -652f), new Vector2(-36f, -352f));
+            Vector2.zero, Vector2.one, new Vector2(36f, -576f), new Vector2(-36f, -352f));
         choicesHolder = UIBuilder.Panel(cardPanel.transform, "Choices", new Vector2(0f, 0f), new Vector2(1f, 0f),
             new Vector2(20f, 16f), new Vector2(-20f, 300f), new Color(0f, 0f, 0f, 0f)).transform;
 
         // ---- Panel de menús
-        menuPanel = UIBuilder.Panel(root, "Menu", new Vector2(0f, 1f), new Vector2(1f, 1f),
-            new Vector2(16f, -872f), new Vector2(-16f, -260f), Paper).gameObject;
+        menuPanel = UIBuilder.Panel(root, "Menu", new Vector2(0f, 0f), new Vector2(1f, 1f),
+            new Vector2(16f, 444f), new Vector2(-16f, -260f), Paper).gameObject;
         menuTitle = UIBuilder.MakeText(menuPanel.transform, "MenuTitle", "", 28, Ink, TextAnchor.UpperCenter,
             Vector2.zero, Vector2.one, new Vector2(24f, -236f), new Vector2(-24f, -186f), FontStyle.Bold);
         menuHolder = UIBuilder.Panel(menuPanel.transform, "MenuHolder", new Vector2(0f, 0f), new Vector2(1f, 1f),
             new Vector2(12f, 16f), new Vector2(-12f, -248f), new Color(0f, 0f, 0f, 0f)).transform;
 
         // ---- Panel de muerte / legado
-        deathPanel = UIBuilder.Panel(root, "Death", new Vector2(0f, 1f), new Vector2(1f, 1f),
-            new Vector2(16f, -872f), new Vector2(-16f, -260f), Theme.DeathFill).gameObject;
+        deathPanel = UIBuilder.Panel(root, "Death", new Vector2(0f, 0f), new Vector2(1f, 1f),
+            new Vector2(16f, 444f), new Vector2(-16f, -260f), Theme.DeathFill).gameObject;
         UIBuilder.MakeText(deathPanel.transform, "DeathTitle", "FIN DE LA VIDA", 38, Danger, TextAnchor.UpperCenter,
             Vector2.zero, Vector2.one, new Vector2(20f, -300f), new Vector2(-20f, -244f), FontStyle.Bold);
         deathHolder = UIBuilder.Panel(deathPanel.transform, "DeathHolder", new Vector2(0f, 0f), new Vector2(1f, 1f),
             new Vector2(16f, 20f), new Vector2(-16f, -260f), new Color(0f, 0f, 0f, 0f)).transform;
 
         // ---- Registro de vida
-        UIBuilder.Panel(root, "LogPanel", new Vector2(0f, 1f), new Vector2(1f, 1f),
-            new Vector2(16f, -1004f), new Vector2(-16f, -884f), LogBg);
+        UIBuilder.Panel(root, "LogPanel", new Vector2(0f, 0f), new Vector2(1f, 0f),
+            new Vector2(16f, 244f), new Vector2(-16f, 420f), LogBg);
         logText = UIBuilder.MakeText(root, "Log", "", 19, Sub, TextAnchor.UpperLeft,
-            new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(28f, -994f), new Vector2(-28f, -892f));
+            new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(28f, 258f), new Vector2(-28f, 406f));
 
         // ---- Botón grande de avanzar año + botón AUTO (avanza solo)
         advanceButton = UIBuilder.MakeButton(root, "BtnAdvance", "Avanzar un año  +", 30, Accent,
-            new Vector2(0f, 1f), new Vector2(1f, 1f), new Vector2(104f, -1128f), new Vector2(-16f, -1036f),
+            new Vector2(0f, 0f), new Vector2(1f, 0f), new Vector2(104f, 132f), new Vector2(-16f, 236f),
             AdvanceYear);
         advanceImage = advanceButton.GetComponent<Image>();
         autoButton = UIBuilder.MakeButton(root, "BtnAuto", "AUTO", 24, Off,
-            new Vector2(0f, 1f), new Vector2(0f, 1f), new Vector2(16f, -1128f), new Vector2(92f, -1036f),
+            new Vector2(0f, 0f), new Vector2(0f, 0f), new Vector2(16f, 132f), new Vector2(92f, 236f),
             ToggleAuto);
         autoImage = autoButton.GetComponent<Image>();
         autoImage.sprite = UIBuilder.OutlineSprite(autoPlay ? AutoOn : Off);
@@ -369,12 +369,12 @@ public class GameManager : MonoBehaviour
         string assetsLine = data.assets.Count > 0 ? string.Join(", ", data.assets.ToArray()) : "—";
         cardText.text =
             "Edad " + ch.age + " años   ·   " + FmtMoney(ch.money) + "\n" +
-            (ch.job.Length > 0 ? "Empleo: " + ch.job + " (" + FmtMoney(ch.salary) + "/año)" : "Sin empleo") + "\n\n" +
-            "Salud " + ch.health + "   ·   Felicidad " + ch.happiness + "\n" +
-            "Inteligencia " + ch.smarts + "   ·   Aspecto " + ch.looks + "\n" +
+            (ch.job.Length > 0 ? "Empleo: " + ch.job + " (" + FmtMoney(ch.salary) + "/año)" : "Sin empleo") + "\n" +
+            "Salud " + ch.health + " · Felicidad " + ch.happiness + "\n" +
+            "Intel " + ch.smarts + " · Aspecto " + ch.looks + "\n" +
             "Bienes: " + assetsLine + "\n" +
-            "Legado de la dinastía: " + data.dynastyLegacy + "\n\n" +
-            "Usa los menús de abajo para actuar\ny pulsa «Avanzar un año» para seguir.";
+            "Legado de la dinastía: " + data.dynastyLegacy + "\n" +
+            "Usa los menús de abajo y «Avanzar un año» para seguir.";
         UIBuilder.Clear(choicesHolder);
         SetAdvanceVisible(true);
         SetAdvanceEnabled(true);
